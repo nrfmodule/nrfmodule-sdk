@@ -1,0 +1,16 @@
+manifest:
+  remotes:
+    - name: ncs
+      url-base: https://github.com/nrfconnect
+
+  projects:
+    # This acts as the "Default Recommended Version"
+    # It is ignored if the parent manifest defines 'sdk-nrf'
+    - name: sdk-nrf
+      remote: ncs
+      path: nrf
+      revision: v3.1.1
+      import: true
+
+  self:
+    path: modules/lib/test-company-sdk
