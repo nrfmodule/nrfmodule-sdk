@@ -54,14 +54,14 @@ Assumes West workspace structure: `workspace/modules/lib/nrfmodule-sdk/` and `wo
 ```yaml
 build:
   cmake: .
+  kconfig: zephyr/Kconfig
 ```
 
 **What this does:**
 - Registers this repo as a Zephyr module
 - Tells Zephyr to run `CMakeLists.txt` during build
 - Automatically adds to include path and library targets
-
-**No Kconfig/settings needed yet** - pure C library without configuration options.
+- Loads Kconfig (which sources the client Kconfigs if available)
 
 ## Public API Contract
 

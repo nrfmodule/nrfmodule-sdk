@@ -13,4 +13,4 @@ manifest:
       import: true
 
   self:
-    path: modules/lib/test-company-sdk
+    path: modules/lib/nrfmodule-sdk
