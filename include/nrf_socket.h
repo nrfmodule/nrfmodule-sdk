@@ -21,6 +21,19 @@ extern "C" {
 #define NRF_AF_INET AF_INET
 #define NRF_AF_INET6 AF_INET6
 
+/**
+ * @brief Security tag type.
+ * Defined here because it is often used in socket contexts.
+ */
+typedef int nrf_sec_tag_t;
+
+/**
+ * @brief Security tag base for TLS decryption.
+ * Used by modem_key_mgmt to filter internal tags.
+ */
+#define NRF_SEC_TAG_TLS_DECRYPT_BASE 2147483648U
+
+
 /* Map functions */
 #define nrf_inet_pton zsock_inet_pton
 

@@ -11,4 +11,9 @@
 #include <nrf_modem_at.h>
 /* Add other headers if needed, e.g. nrf_modem_gnss.h */
 
+/**
+ * @brief Security tag type.
+ */
+typedef int nrf_sec_tag_t;
+
 #endif /* NRF_MODEM_H__ */
