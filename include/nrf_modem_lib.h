@@ -109,12 +109,20 @@ int nrf_modem_lib_bootloader_init(void);
  */
 int nrf_modem_lib_shutdown(void);
 
+/**
+ * @brief Modem fault information structure.
+ */
 struct nrf_modem_fault_info {
 	uint32_t reason;
 	uint32_t program_counter;
 	uint32_t signature;
 };
 
+/**
+ * @brief Modem fault handler.
+ *
+ * @param fault_info Pointer to the fault information structure.
+ */
 void nrf_modem_fault_handler(struct nrf_modem_fault_info *fault_info);
 
 #ifdef __cplusplus
