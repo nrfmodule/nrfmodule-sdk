@@ -9,7 +9,6 @@ menuconfig SLM_BACKEND
     depends on SERIAL
     depends on UART_ASYNC_API
     depends on RING_BUFFER
-    depends on SOC_FAMILY_NRF
     select UART_USE_RUNTIME_CONFIGURE
 
 if SLM_BACKEND
