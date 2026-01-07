@@ -2,6 +2,29 @@
 
 Public distribution of the nRFModule library. Contains headers and pre-compiled binaries for customer integration.
 
+## Version Compatibility
+
+| nRFModule Version | NCS Version | Status | Notes |
+|-------------------|-------------|--------|-------|
+| **v2.x** | **3.2.x** | ✅ **Active** | Uses `sm_at_client` transport |
+| v1.x | 3.1.x | 🔧 Maintenance | Legacy `slm_backend` |
+
+**Current Version:** v2.0.0
+
+### Choosing a Version
+
+```yaml
+# In your west.yml:
+
+# For NCS 3.2.x projects (recommended):
+- name: nrfmodule-sdk
+  revision: v2.0.0  # or 'main' for latest v2.x
+
+# For NCS 3.1.x projects (legacy):
+- name: nrfmodule-sdk
+  revision: v1.x
+```
+
 ## Overview
 
 This SDK enables nRF52840 devices to use standard Nordic LTE libraries (`lte_lc`, `modem_info`, `date_time`, etc.) by communicating with an external nRF9160 modem via UART. The nRF9160 runs Nordic's Serial Line Modem (SLM) firmware.
