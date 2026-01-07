@@ -4,10 +4,10 @@ Public distribution of the nRFModule library. Contains headers and pre-compiled 
 
 ## Version Compatibility
 
-| nRFModule Version | NCS Version | Status | Notes |
-|-------------------|-------------|--------|-------|
-| **v2.x** | **3.2.x** | ✅ **Active** | Uses `sm_at_client` transport |
-| v1.x | 3.1.x | 🔧 Maintenance | Legacy `slm_backend` |
+| nRFModule Version | NCS Version | Branches | Status | Notes |
+|-------------------|-------------|----------|--------|-------|
+| **v2.x** | **3.2.x** | `main`, `v2.x` | ✅ **Active** | Uses `sm_at_client` transport |
+| v1.x | 3.1.x | `v1.x` | 🔧 Maintenance | Legacy `slm_backend` |
 
 **Current Version:** v2.0.0
 
@@ -16,13 +16,17 @@ Public distribution of the nRFModule library. Contains headers and pre-compiled 
 ```yaml
 # In your west.yml:
 
-# For NCS 3.2.x projects (recommended):
+# For NCS 3.2.x projects - Choose one:
 - name: nrfmodule-sdk
-  revision: v2.0.0  # or 'main' for latest v2.x
+  revision: v2.0.0  # Pinned to specific release (recommended for production)
+  # OR
+  revision: v2.x    # Latest v2.x patches (recommended for active development)
+  # OR
+  revision: main    # Latest stable across all versions
 
 # For NCS 3.1.x projects (legacy):
 - name: nrfmodule-sdk
-  revision: v1.x
+  revision: v1.x    # Latest v1.x patches
 ```
 
 ## Overview
