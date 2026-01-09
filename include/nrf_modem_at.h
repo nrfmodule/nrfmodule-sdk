@@ -120,6 +120,23 @@ int nrf_modem_at_scanf(const char *cmd, const char *fmt, ...);
 int nrf_modem_at_cmd(void *buf, size_t len, const char *fmt, ...);
 
 /**
+ * @brief Send a formatted AT command and receive the response in raw mode.
+ *
+ * Similar to @ref nrf_modem_at_cmd but does not strip trailing whitespace
+ * from the response. This is required for commands that return binary data
+ * or data where trailing CRLF sequences are significant (e.g., HTTP responses).
+ *
+ * @param buf Buffer to hold the response.
+ * @param len Size of the response buffer.
+ * @param fmt Command format.
+ * @param ... Format arguments.
+ *
+ * @retval  0 On "OK" responses.
+ * @returns Same error codes as @ref nrf_modem_at_cmd.
+ */
+int nrf_modem_at_cmd_raw(void *buf, size_t len, const char *fmt, ...);
+
+/**
  * @brief AT response handler prototype.
  *
  * @note This handler is executed in an interrupt service routine.
