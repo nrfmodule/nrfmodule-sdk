@@ -16,4 +16,9 @@
  */
 typedef int nrf_sec_tag_t;
 
+struct nrf_modem_fault_info {
+        uint32_t reason;
+        uint32_t program_counter;
+};
+
 #endif /* NRF_MODEM_H__ */

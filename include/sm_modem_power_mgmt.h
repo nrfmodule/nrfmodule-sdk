@@ -53,6 +53,25 @@ int sm_modem_power_mgmt_init(k_timeout_t inactivity_timeout);
 int sm_modem_power_mgmt_send_at(const char *cmd, uint32_t timeout);
 
 /**
+ * @brief Ensure the modem is awake without sending a command.
+ *
+ * Wakes the modem if it is in IDLE state and waits until it is responsive.
+ * Does NOT send any user command. Useful when the caller needs to guarantee
+ * the modem is awake before managing its own TX/RX buffer.
+ *
+ * @return 0 on success, negative errno on failure
+ */
+int sm_modem_power_mgmt_ensure_awake(void);
+
+/**
+ * @brief Notify the power manager that AT activity just occurred.
+ *
+ * Resets the inactivity timer so the modem is not put to sleep prematurely.
+ * Call this after every successful AT command when bypassing send_at().
+ */
+void sm_modem_power_mgmt_notify_activity(void);
+
+/**
  * @brief Manually put modem to sleep immediately
  * 
  * Stops the inactivity timer and sends AT#XSLEEP=2 immediately.
