@@ -1,0 +1,317 @@
+/*
+ * LiveTracker nRF52840 Board Device Tree
+ *
+ * Copyright (c) 2026 nRFModule
+ * SPDX-License-Identifier: Apache-2.0
+ *
+ * Hardware:
+ *   - nRF52840 WLCSP BGA100 (U4)
+ *   - nRF9151 Cellular Modem (M1) - via UART + DTR/RI
+ *   - MX25R6435F 8MB QSPI Flash (U5)
+ *   - L76-L GPS Module (U6) - via UART
+ *   - LIS2DH12 Accelerometer (U8) - via I2C
+ *   - BMP390 Barometer (U9) - via I2C
+ *   - RGB LED (D4)
+ *   - User Button (SW)
+ *   - USB-C Connector (J1)
+ *
+ * Power Architecture:
+ *   - VDD_nRF: Main MCU power (always on)
+ *   - VCC_BAT_S: nRF9151 power (always on when battery present)
+ *   - VDD_sensors: Sensor power (GPIO controlled via P1.04)
+ *   - Vcc_gnss: GPS power (GPIO controlled via P1.02)
+ */
+
+/dts-v1/;
+#include <nordic/nrf52840_qiaa.dtsi>
+#include <nordic/nrf52840_partition.dtsi>
+#include "livetracker_nrf52840-pinctrl.dtsi"
+#include <zephyr/dt-bindings/gpio/gpio.h>
+#include <zephyr/dt-bindings/i2c/i2c.h>
+#include <zephyr/dt-bindings/input/input-event-codes.h>
+
+/ {
+	model = "LiveTracker nRF52840";
+	compatible = "nrfmodule,livetracker-nrf52840";
+
+	chosen {
+		zephyr,console = &cdc_acm_uart0;
+		zephyr,shell-uart = &cdc_acm_uart0;
+		zephyr,uart-mcumgr = &cdc_acm_uart0;
+		zephyr,bt-mon-uart = &cdc_acm_uart0;
+		zephyr,bt-c2h-uart = &cdc_acm_uart0;
+		zephyr,sram = &sram0;
+		zephyr,flash = &flash0;
+		zephyr,code-partition = &slot0_partition;
+		/* Serial Modem UART */
+		ncs_sm_uart = &uart0;
+	};
+
+	/*
+	 * Serial Modem DTR/RI GPIO Configuration
+	 *
+	 * DTR (Data Terminal Ready): nRF52840 P0.28 -> nRF9151 P0.31 (POWER)
+	 *   Output from 52840, used to wake modem
+	 *
+	 * RI (Ring Indicator): nRF52840 P0.30 <- nRF9151 P0.30 (INDICATE)
+	 *   Input to 52840, modem signals incoming data/call
+	 */
+	dte_dtr: dte_dtr {
+		compatible = "nordic,dte-dtr";
+		dtr-gpios = <&gpio0 28 GPIO_ACTIVE_HIGH>;
+		ri-gpios = <&gpio0 30 GPIO_ACTIVE_HIGH>;
+	};
+
+	/*
+	 * Power Control GPIOs
+	 *
+	 * Sensor VCC Enable: nRF52840 P1.04 (ball H1) -> U10 load switch
+	 *   Controls VDD_sensors rail for LIS2DH12 and BMP390
+	 *
+	 * GPS VCC Enable: nRF52840 P1.02 (ball G3) -> U7 load switch
+	 *   Controls Vcc_gnss rail for L76-L GPS module
+	 *
+	 * GPS Force On: nRF52840 P0.07 -> L76-L FORCE_ON pin
+	 *   When HIGH, keeps GPS awake (overrides standby)
+	 *
+	 * GPS Standby: nRF52840 P0.31 -> L76-L STANDBY pin
+	 *   When HIGH, puts GPS in low power standby mode
+	 *
+	 * Power Off: nRF52840 P0.14 -> Main power load switch control
+	 *   Default HIGH (power on), set LOW to power off device
+	 *
+	 * NOTE: Application must enable these before using sensors/GPS
+	 */
+	power_control {
+		compatible = "gpio-leds";
+		sensor_vcc_en: sensor_vcc_en {
+			gpios = <&gpio1 4 GPIO_ACTIVE_HIGH>;
+			label = "Sensor VCC Enable";
+		};
+		gps_vcc_en: gps_vcc_en {
+			gpios = <&gpio1 2 GPIO_ACTIVE_HIGH>;
+			label = "GPS VCC Enable";
+		};
+		gps_force_on: gps_force_on {
+			gpios = <&gpio0 7 GPIO_ACTIVE_HIGH>;
+			label = "GPS Force On";
+		};
+		gps_standby: gps_standby {
+			gpios = <&gpio0 31 GPIO_ACTIVE_HIGH>;
+			label = "GPS Standby";
+		};
+		poweroff_pin: poweroff_pin {
+			gpios = <&gpio0 14 GPIO_ACTIVE_HIGH>;
+			label = "Power Off Control";
+		};
+	};
+
+	/*
+	 * RGB LED (D4 - Common Anode, active low)
+	 *
+	 * Red:   nRF52840 P1.11 (ball A3)
+	 * Green: nRF52840 P1.13 (ball A4)
+	 * Blue:  nRF52840 P0.03 (ball A5)
+	 */
+	leds {
+		compatible = "gpio-leds";
+		led_red: led_0 {
+			gpios = <&gpio1 11 GPIO_ACTIVE_LOW>;
+			label = "Red LED";
+		};
+		led_green: led_1 {
+			gpios = <&gpio1 13 GPIO_ACTIVE_LOW>;
+			label = "Green LED";
+		};
+		led_blue: led_2 {
+			gpios = <&gpio0 3 GPIO_ACTIVE_LOW>;
+			label = "Blue LED";
+		};
+	};
+
+	/*
+	 * User Button (SW - Omron B3U)
+	 *
+	 * nRF52840 P1.09 (ball F10) <- Button via Q2 MOSFET
+	 * Active low with internal pull-up
+	 */
+	buttons: buttons {
+		compatible = "gpio-keys";
+		button0: button_0 {
+			gpios = <&gpio1 9 (GPIO_ACTIVE_LOW)>;
+			label = "User Button";
+			zephyr,code = <INPUT_KEY_0>;
+		};
+	};
+
+	/*
+	 * Battery Voltage Measurement
+	 *
+	 * nRF52840 P0.05/AIN3 (ball D10) <- Voltage divider (1:2)
+	 * Actual battery voltage = ADC reading * 2
+	 */
+	battery_adc {
+		compatible = "voltage-divider";
+		io-channels = <&adc 3>;
+		output-ohms = <1000000>;  /* R14: 1M bottom resistor */
+		full-ohms = <2000000>;    /* R13 + R14: 2M total */
+	};
+
+	/* Aliases for common usage */
+	aliases {
+		led0 = &led_red;
+		led1 = &led_green;
+		led2 = &led_blue;
+		sw0 = &button0;
+		sm-uart = &uart0;
+		gps-uart = &uart1;
+		accel0 = &lis2dh12;
+		baro0 = &bmp390;
+		spi-flash0 = &mx25r64;
+		poweroff = &poweroff_pin;
+	};
+};
+
+/* Enable GPIO ports */
+&gpio0 {
+	status = "okay";
+};
+
+&gpio1 {
+	status = "okay";
+};
+
+/* Enable GPIOTE for GPIO interrupt/event support */
+&gpiote {
+	status = "okay";
+};
+
+/*
+ * Serial Modem UART (nRF52840 <-> nRF9151)
+ *
+ * TX:  P0.06 -> nRF9151 P0.11
+ * RX:  P0.08 <- nRF9151 P0.10
+ * No hardware flow control (RTS/CTS disabled)
+ * 
+ * To enable HW flow control, uncomment below and update pinctrl:
+ *   RTS: P1.03 -> nRF9151 P0.12
+ *   CTS: P1.06 <- nRF9151 P0.09
+ */
+&uart0 {
+	compatible = "nordic,nrf-uarte";
+	status = "okay";
+	current-speed = <921600>;
+	hw-flow-control;  /* Uncomment to enable RTS/CTS */
+	pinctrl-0 = <&uart0_default>;
+	pinctrl-1 = <&uart0_sleep>;
+	pinctrl-names = "default", "sleep";
+};
+
+/*
+ * GPS UART (nRF52840 <-> L76-L)
+ *
+ * TX: P0.11 -> GPS RX
+ * RX: P0.13 <- GPS TX
+ * Default 9600 baud for L76-L
+ */
+&uart1 {
+	compatible = "nordic,nrf-uarte";
+	status = "okay";
+	current-speed = <9600>;
+	pinctrl-0 = <&uart1_default>;
+	pinctrl-1 = <&uart1_sleep>;
+	pinctrl-names = "default", "sleep";
+};
+
+/*
+ * I2C Bus for Sensors
+ *
+ * SCL: P1.12
+ * SDA: P1.15
+ *
+ * Devices:
+ *   - LIS2DH12 @ 0x19 (accelerometer)
+ *   - BMP390 @ 0x77 (barometer)
+ */
+&i2c0 {
+	compatible = "nordic,nrf-twim";
+	status = "okay";
+	clock-frequency = <I2C_BITRATE_FAST>;
+	pinctrl-0 = <&i2c0_default>;
+	pinctrl-1 = <&i2c0_sleep>;
+	pinctrl-names = "default", "sleep";
+
+	lis2dh12: lis2dh12@19 {
+		compatible = "st,lis2dh12", "st,lis2dh";
+		reg = <0x19>;
+		/* INT1: nRF52840 P1.01 (ball J1) */
+		irq-gpios = <&gpio1 1 GPIO_ACTIVE_HIGH>;
+	};
+
+	/*
+	 * BMP390 Barometer
+	 * 
+	 * Supported via BMP388 driver (bosch,bmp390 compatible)
+	 */
+	bmp390: bmp390@77 {
+		compatible = "bosch,bmp390";
+		reg = <0x77>;
+	};
+};
+
+/*
+ * QSPI Flash (MX25R6435F - 8MB)
+ *
+ * NOTE: Partitions are NOT defined here.
+ * Use overlay files to define partitions based on application needs.
+ * Example: LittleFS, MCUboot slots, etc.
+ */
+&qspi {
+	status = "okay";
+	pinctrl-0 = <&qspi_default>;
+	pinctrl-1 = <&qspi_sleep>;
+	pinctrl-names = "default", "sleep";
+
+	mx25r64: mx25r6435f@0 {
+		compatible = "nordic,qspi-nor";
+		reg = <0>;
+		sck-frequency = <8000000>;
+		jedec-id = [c2 28 17];
+		sfdp-bfp = [
+			e5 20 f1 ff  ff ff ff 03  44 eb 08 6b  08 3b 04 bb
+			ee ff ff ff  ff ff 00 ff  ff ff 00 ff  0c 20 0f 52
+			10 d8 00 ff  23 72 f5 00  82 ed 04 cc  44 83 68 44
+			30 b0 30 b0  f7 c4 d5 5c  00 be 29 ff  f0 d0 ff ff
+		];
+		size = <67108864>; /* 64 Mbit = 8 MB */
+		has-dpd;
+		t-enter-dpd = <10000>;
+		t-exit-dpd = <35000>;
+	};
+};
+
+/* ADC for battery voltage measurement */
+&adc {
+	status = "okay";
+	#address-cells = <1>;
+	#size-cells = <0>;
+
+	channel@3 {
+		reg = <3>;
+		zephyr,gain = "ADC_GAIN_1_6";
+		zephyr,reference = "ADC_REF_INTERNAL";
+		zephyr,acquisition-time = <ADC_ACQ_TIME_DEFAULT>;
+		zephyr,input-positive = <NRF_SAADC_AIN3>;
+		zephyr,resolution = <12>;
+	};
+};
+
+/* USB - new USBD stack (CONFIG_USB_DEVICE_STACK_NEXT) */
+zephyr_udc0: &usbd {
+	compatible = "nordic,nrf-usbd";
+	status = "okay";
+
+	cdc_acm_uart0: cdc_acm_uart0 {
+		compatible = "zephyr,cdc-acm-uart";
+	};
+};

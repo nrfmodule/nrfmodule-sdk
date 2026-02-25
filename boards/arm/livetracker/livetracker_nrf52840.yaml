@@ -1,0 +1,25 @@
+# SPDX-License-Identifier: Apache-2.0
+
+identifier: livetracker_nrf52840
+name: LiveTracker nRF52840
+type: mcu
+arch: arm
+toolchain:
+  - zephyr
+  - gnuarmemb
+  - xtools
+ram: 256
+flash: 1024
+supported:
+  - adc
+  - ble
+  - counter
+  - gpio
+  - i2c
+  - pwm
+  - spi
+  - usb_device
+  - usb_cdc
+  - watchdog
+  - netif:openthread
+vendor: nrfmodule

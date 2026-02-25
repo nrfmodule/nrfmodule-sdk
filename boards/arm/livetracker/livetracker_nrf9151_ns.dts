@@ -1,0 +1,94 @@
+/*
+ * LiveTracker nRF9151 Board Device Tree (Non-Secure)
+ *
+ * Copyright (c) 2026 nRFModule
+ * SPDX-License-Identifier: Apache-2.0
+ *
+ * This board file is for building the Serial Modem firmware
+ * (ncs-serial-modem) to run on the nRF9151 cellular modem.
+ *
+ * The nRF9151 communicates with the main nRF52840 MCU via UART.
+ *
+ * Hardware Connections:
+ *   - UART TX (P0.10) -> nRF52840 P0.08 (RX)
+ *   - UART RX (P0.11) <- nRF52840 P0.06 (TX)
+ *   - UART RTS (P0.12) -> nRF52840 P1.03 (RTS)
+ *   - UART CTS (P0.09) <- nRF52840 P1.06 (CTS)
+ *   - DTR input (P0.31 - POWER) <- nRF52840 P0.28 (host wakes modem)
+ *   - RI output (P0.30 - INDICATE) -> nRF52840 P0.30 (modem signals host)
+ */
+
+/dts-v1/;
+#include <nordic/nrf9151ns_laca.dtsi>
+#include "livetracker_nrf9151-pinctrl.dtsi"
+#include <zephyr/dt-bindings/gpio/gpio.h>
+
+/ {
+	model = "LiveTracker nRF9151";
+	compatible = "nrfmodule,livetracker-nrf9151";
+
+	chosen {
+		zephyr,sram = &sram0_ns_app;
+		zephyr,flash = &flash0;
+		zephyr,code-partition = &slot0_ns_partition;
+		/* Serial Modem UART for external MCU */
+		ncs,sm-uart = &dtr_uart2;
+	};
+
+	/*
+	 * SIM Card Selection
+	 * LiveTracker uses onboard eSIM (MFFx_M2M_UICC - U11)
+	 * and external nano SIM holder
+	 */
+};
+
+/* Enable GPIOTE and GPIO */
+&gpiote {
+	status = "okay";
+};
+
+&gpio0 {
+	status = "okay";
+};
+
+/*
+ * Serial Modem UART with DTR/RI (External MCU Interface)
+ *
+ * This is the primary communication interface between
+ * the nRF9151 modem and the nRF52840 application MCU.
+ */
+&uart2 {
+	compatible = "nordic,nrf-uarte";
+	status = "okay";
+	current-speed = <115200>;
+	/* hw-flow-control; */  /* Uncomment to enable RTS/CTS - also update pinctrl */
+	pinctrl-0 = <&uart2_default>;
+	pinctrl-1 = <&uart2_sleep>;
+	pinctrl-names = "default", "sleep";
+
+	/*
+	 * DTR-UART wrapper for serial-modem
+	 *
+	 * DTR (P0.31 - POWER): Input from nRF52840 P0.28
+	 *   When 52840 asserts DTR, modem wakes up
+	 *
+	 * RI (P0.30 - INDICATE): Output to nRF52840 P0.30
+	 *   Modem asserts RI to wake 52840 on incoming data/call
+	 */
+	dtr_uart2: dtr-uart {
+		compatible = "nordic,dtr-uart";
+		dtr-gpios = <&gpio0 31 (GPIO_PULL_UP | GPIO_ACTIVE_LOW)>;
+		ri-gpios = <&gpio0 30 GPIO_ACTIVE_LOW>;
+		status = "okay";
+	};
+};
+
+/* Modem is handled by Zephyr modem driver */
+
+/* Include default nRF91 memory partition configuration */
+#include <nordic/nrf91xx_partition.dtsi>
+
+/* Disable UART1, because it is used by default in TF-M */
+&uart1 {
+	status = "disabled";
+};

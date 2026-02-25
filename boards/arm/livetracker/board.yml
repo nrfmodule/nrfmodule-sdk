@@ -1,0 +1,8 @@
+board:
+  name: livetracker
+  vendor: nrfmodule
+  socs:
+    - name: nrf52840
+    - name: nrf9151
+      variants:
+        - name: 'ns'

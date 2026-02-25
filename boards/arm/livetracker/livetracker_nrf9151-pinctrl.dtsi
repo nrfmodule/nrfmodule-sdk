@@ -1,0 +1,44 @@
+/*
+ * LiveTracker nRF9151 Pin Control Configuration
+ *
+ * Copyright (c) 2026 nRFModule
+ * SPDX-License-Identifier: Apache-2.0
+ *
+ * Pin mapping for Serial Modem firmware (ncs-serial-modem)
+ * nRF9151 communicates with external nRF52840 MCU via UART
+ */
+
+&pinctrl {
+	/*
+	 * External MCU UART (nRF9151 <-> nRF52840)
+	 *
+	 * UART without hardware flow control:
+	 *   TX:  P0.10 -> nRF52840 P0.08 (RX)
+	 *   RX:  P0.11 <- nRF52840 P0.06 (TX)
+	 *
+	 * To enable HW flow control, uncomment RTS/CTS lines:
+	 *   RTS: P0.12 -> nRF52840 P1.03
+	 *   CTS: P0.09 <- nRF52840 P1.06
+	 */
+	uart2_default: uart2_default {
+		group1 {
+			psels = <NRF_PSEL(UART_TX, 0, 10)>;
+			/* <NRF_PSEL(UART_RTS, 0, 12)>; */  /* Uncomment for HW flow control */
+		};
+		group2 {
+			psels = <NRF_PSEL(UART_RX, 0, 11)>;
+			/* <NRF_PSEL(UART_CTS, 0, 9)>; */  /* Uncomment for HW flow control */
+			bias-pull-up;
+		};
+	};
+
+	uart2_sleep: uart2_sleep {
+		group1 {
+			psels = <NRF_PSEL(UART_TX, 0, 10)>,
+				<NRF_PSEL(UART_RX, 0, 11)>;
+			/* <NRF_PSEL(UART_RTS, 0, 12)>,
+			   <NRF_PSEL(UART_CTS, 0, 9)>; */  /* Uncomment for HW flow control */
+			low-power-enable;
+		};
+	};
+};

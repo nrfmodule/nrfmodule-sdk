@@ -1,0 +1,8 @@
+# LiveTracker board configuration
+#
+# Copyright (c) 2026 nRFModule
+# SPDX-License-Identifier: Apache-2.0
+
+config BOARD_LIVETRACKER
+	select SOC_NRF52840_QIAA if BOARD_LIVETRACKER_NRF52840
+	select SOC_NRF9151_LACA if BOARD_LIVETRACKER_NRF9151 || BOARD_LIVETRACKER_NRF9151_NS

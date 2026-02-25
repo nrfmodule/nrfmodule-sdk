@@ -1,0 +1,40 @@
+/*
+ * LiveTracker nRF9151 Board Device Tree (Secure)
+ *
+ * Copyright (c) 2026 nRFModule
+ * SPDX-License-Identifier: Apache-2.0
+ *
+ * This DTS is used by MCUboot (bootloader) which runs in the
+ * secure domain. The non-secure application uses
+ * livetracker_nrf9151_ns.dts instead.
+ */
+
+/dts-v1/;
+#include <nordic/nrf9151_laca.dtsi>
+#include "livetracker_nrf9151-pinctrl.dtsi"
+#include <zephyr/dt-bindings/gpio/gpio.h>
+
+/ {
+	model = "LiveTracker nRF9151";
+	compatible = "nrfmodule,livetracker-nrf9151";
+
+	chosen {
+		zephyr,sram = &sram0_s;
+		zephyr,flash = &flash0;
+		zephyr,code-partition = &boot_partition;
+		zephyr,sram-secure-partition = &sram0_s;
+		zephyr,sram-non-secure-partition = &sram0_ns;
+	};
+};
+
+/* Enable GPIOTE and GPIO */
+&gpiote {
+	status = "okay";
+};
+
+&gpio0 {
+	status = "okay";
+};
+
+/* Include default nRF91 memory partition configuration */
+#include <nordic/nrf91xx_partition.dtsi>

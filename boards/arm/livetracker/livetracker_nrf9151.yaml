@@ -1,0 +1,16 @@
+# SPDX-License-Identifier: Apache-2.0
+
+identifier: livetracker/nrf9151
+name: LiveTracker nRF9151
+type: mcu
+arch: arm
+toolchain:
+  - zephyr
+  - gnuarmemb
+  - xtools
+ram: 88
+flash: 1024
+supported:
+  - gpio
+  - uart
+vendor: nrfmodule
