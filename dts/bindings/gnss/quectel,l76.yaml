@@ -1,0 +1,57 @@
+# Copyright (c) 2026 nRFModule
+# SPDX-License-Identifier: Apache-2.0
+
+description: |
+  Quectel L76 GNSS receiver with load switch power control.
+
+  The L76 boots at 9600 baud outputting standard NMEA. The driver sends
+  PMTK commands to configure sentences and optionally switches to 115200.
+
+  Power is gated by an external load switch (power-gpios). Cutting power
+  loses all L76 state; resuming requires a full init sequence including
+  baud rate switch.
+
+  Example:
+
+  &uart1 {
+          l76: l76 {
+                  compatible = "quectel,l76";
+                  power-gpios = <&gpio1 2 GPIO_ACTIVE_HIGH>;
+                  force-on-gpios = <&gpio0 7 GPIO_ACTIVE_HIGH>;
+          };
+  };
+
+compatible: "quectel,l76"
+
+include:
+  - uart-device.yaml
+
+properties:
+  power-gpios:
+    type: phandle-array
+    required: true
+    description: |
+      Load switch GPIO that gates power to the L76 module.
+      Deassert to cut power completely.
+
+  force-on-gpios:
+    type: phandle-array
+    description: |
+      Force-on pin. Assert to keep L76 awake during normal operation.
+
+  standby-gpios:
+    type: phandle-array
+    description: |
+      Standby control pin for low-power mode that retains state.
+
+  initial-baudrate:
+    type: int
+    default: 9600
+    description: |
+      Baud rate the L76 uses at power-on. Always 9600 for L76.
+
+  target-baudrate:
+    type: int
+    default: 115200
+    description: |
+      Target baud rate after init. Set to 9600 to skip baud switch.
