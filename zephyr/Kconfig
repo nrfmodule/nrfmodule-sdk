@@ -6,4 +6,5 @@
 
 # Source config from nrfmodule-core
 rsource "../../nrfmodule-core/src/client/Kconfig"
+rsource "../../nrfmodule-core/src/lib/ble_log/Kconfig"
 
