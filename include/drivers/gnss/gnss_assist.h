@@ -109,7 +109,7 @@ int gnss_assist_get_buf_size(const struct device *dev);
  * @brief Upload assistance data to a GNSS module.
  *
  * Blocks the calling thread for the duration of the upload. The engine:
- * 1. Enters chip-specific transfer mode (e.g., NMEA → MTK binary).
+ * 1. Enters chip-specific transfer mode (e.g., NMEA -> MTK binary).
  * 2. Reads data chunks via params->reader, frames and sends each packet.
  * 3. Waits for per-packet acknowledgement from the module.
  * 4. Calls params->progress (if set) after each ACK.
@@ -131,6 +131,47 @@ int gnss_assist_get_buf_size(const struct device *dev);
  */
 int gnss_assist_upload(const struct device *dev,
 		       const struct gnss_assist_params *params);
+
+/**
+ * @brief EPO status as reported by the GNSS module itself (PMTK707).
+ *
+ * Populated by gnss_assist_query_epo(). All fields are zero when valid
+ * is false.
+ */
+struct gnss_assist_epo_status {
+	/** UNIX timestamp of the start of EPO coverage. */
+	uint32_t start_time;
+
+	/** UNIX timestamp of the end of EPO coverage. */
+	uint32_t end_time;
+
+	/** Number of EPO data sets stored in the module. */
+	uint16_t epo_sets;
+
+	/** true if the module has EPO data loaded (epo_sets > 0). */
+	bool valid;
+};
+
+/**
+ * @brief Query the EPO status from the GNSS module (PMTK607/707).
+ *
+ * Sends $PMTK607 and parses the $PMTK707 response to determine whether
+ * the module has EPO data loaded and what time range it covers.
+ *
+ * The calling thread blocks until the response is received or a timeout
+ * occurs. The GPS must be powered on before calling this function.
+ *
+ * @param dev    GNSS device.
+ * @param status Output struct filled on success.
+ *
+ * @retval 0          Query succeeded; status is populated.
+ * @retval -EINVAL    NULL parameter.
+ * @retval -ENOTSUP   Device does not support EPO status query.
+ * @retval -ETIMEDOUT No response from module within timeout.
+ * @retval -EIO       Transport error.
+ */
+int gnss_assist_query_epo(const struct device *dev,
+			  struct gnss_assist_epo_status *status);
 
 #ifdef __cplusplus
 }
