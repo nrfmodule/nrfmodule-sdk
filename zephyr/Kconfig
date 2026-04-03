@@ -9,4 +9,5 @@ rsource "../../nrfmodule-core/src/client/Kconfig"
 rsource "../../nrfmodule-core/src/lib/ble_log/Kconfig"
 rsource "../../nrfmodule-core/src/drivers/gnss/Kconfig.l76"
 rsource "../../nrfmodule-core/src/drivers/gnss/Kconfig.assist"
+rsource "../../nrfmodule-core/src/drivers/gnss/Kconfig.extended"
 
