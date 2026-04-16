@@ -105,6 +105,17 @@ int nrf_modem_lib_init(void);
 int nrf_modem_lib_bootloader_init(void);
 
 /**
+ * @brief Reset the modem.
+ *
+ * Attempts AT#XRESET first. If the modem is unresponsive, falls back
+ * to a DTR pin cycle to force a cold boot. Blocks until the modem
+ * responds to AT commands or all attempts are exhausted.
+ *
+ * @return 0 on success, -ETIMEDOUT if modem did not recover
+ */
+int nrf_modem_lib_reset(void);
+
+/**
  * @brief Shutdown the Modem library.
  */
 int nrf_modem_lib_shutdown(void);
