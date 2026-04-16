@@ -21,6 +21,13 @@
  * - Works with DTR UART control in sm_at_client
  */
 
+/** Modem power states returned by sm_modem_power_mgmt_get_state() */
+enum sm_modem_power_state {
+	SM_MODEM_STATE_UNKNOWN = 0,
+	SM_MODEM_STATE_AWAKE   = 1,
+	SM_MODEM_STATE_IDLE    = 2,
+};
+
 /**
  * @brief Initialize modem power management
  * 
@@ -72,6 +79,21 @@ int sm_modem_power_mgmt_ensure_awake(void);
 void sm_modem_power_mgmt_notify_activity(void);
 
 /**
+ * @brief Pause automatic sleep (e.g. during LTE registration).
+ *
+ * Cancels any pending inactivity timer. Auto-sleep remains paused
+ * until sm_modem_power_mgmt_resume() is called.
+ */
+void sm_modem_power_mgmt_pause(void);
+
+/**
+ * @brief Resume automatic sleep after a previous pause.
+ *
+ * Restarts the inactivity timer from now.
+ */
+void sm_modem_power_mgmt_resume(void);
+
+/**
  * @brief Manually put modem to sleep immediately
  * 
  * Stops the inactivity timer and sends AT#XSLEEP=2 immediately.
@@ -83,9 +105,9 @@ int sm_modem_power_mgmt_sleep(void);
 
 /**
  * @brief Get current modem power state (for debugging)
- * 
- * @return 0=UNKNOWN, 1=AWAKE, 2=IDLE
+ *
+ * @return enum modem_power_state value
  */
-int sm_modem_power_mgmt_get_state(void);
+enum sm_modem_power_state sm_modem_power_mgmt_get_state(void);
 
 #endif /* SM_MODEM_POWER_MGMT_H */
