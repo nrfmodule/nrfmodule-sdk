@@ -154,7 +154,7 @@
 	 * nRF52840 P0.05/AIN3 (ball D10) <- Voltage divider (1:2)
 	 * Actual battery voltage = ADC reading * 2
 	 */
-	battery_adc {
+	battery_adc: battery_adc {
 		compatible = "voltage-divider";
 		io-channels = <&adc 3>;
 		output-ohms = <1000000>;  /* R14: 1M bottom resistor */
