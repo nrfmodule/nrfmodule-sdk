@@ -18,5 +18,7 @@ supported:
   - gpio
   - i2c
   - pwm
+  - usb_device
+  - usb_cdc
   - watchdog
 vendor: nrfmodule

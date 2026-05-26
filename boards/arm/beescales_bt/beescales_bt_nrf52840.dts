@@ -33,6 +33,9 @@
 		zephyr,sram = &sram0;
 		zephyr,flash = &flash0;
 		zephyr,code-partition = &slot0_partition;
+		zephyr,console = &cdc_acm_uart0;
+		zephyr,shell-uart = &cdc_acm_uart0;
+		zephyr,uart-mcumgr = &cdc_acm_uart0;
 	};
 
 	/* Power control GPIOs */
@@ -207,6 +210,16 @@
 	};
 };
 
+/* USB CDC ACM for console/shell/logging */
+zephyr_udc0: &usbd {
+	compatible = "nordic,nrf-usbd";
+	status = "okay";
+
+	cdc_acm_uart0: cdc_acm_uart0 {
+		compatible = "zephyr,cdc-acm-uart";
+	};
+};
+
 /* Disabled peripherals (not connected on PCB) */
 &uart0 { status = "disabled"; };
 &uart1 { status = "disabled"; };
@@ -215,4 +228,3 @@
 &spi1 { status = "disabled"; };
 &spi2 { status = "disabled"; };
 &spi3 { status = "disabled"; };
-&usbd { status = "disabled"; };
