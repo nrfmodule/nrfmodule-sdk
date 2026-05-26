@@ -38,17 +38,23 @@
 		zephyr,uart-mcumgr = &cdc_acm_uart0;
 	};
 
-	/* Power control GPIOs */
-	power_control {
-		compatible = "gpio-leds";
-		reg_enable: reg_enable {
-			gpios = <&gpio1 4 (GPIO_ACTIVE_HIGH | GPIO_PULL_UP)>;
-			label = "Power Regulator Enable";
-		};
-		hx711_enable: hx711_enable {
-			gpios = <&gpio1 9 GPIO_ACTIVE_HIGH>;
-			label = "HX711 Enable";
-		};
+	/*
+	 * Power rails — regulator-fixed with regulator-boot-on.
+	 * Init at POST_KERNEL/75, before QSPI driver at POST_KERNEL/80.
+	 */
+	sensor_pwr: sensor_pwr {
+		compatible = "regulator-fixed";
+		regulator-name = "sensor-vcc";
+		enable-gpios = <&gpio1 4 (GPIO_ACTIVE_HIGH | GPIO_PULL_UP)>;
+		regulator-boot-on;
+		startup-delay-us = <50000>;
+	};
+
+	hx711_pwr: hx711_pwr {
+		compatible = "regulator-fixed";
+		regulator-name = "hx711-vcc";
+		enable-gpios = <&gpio1 9 GPIO_ACTIVE_HIGH>;
+		regulator-boot-on;
 	};
 
 	/* HX711 Load Cell #1 */
@@ -113,8 +119,8 @@
 		acc-i2c = &i2c0;
 		rtc-i2c = &i2c0;
 		led-switch = &pwm_led_sw;
-		power-en = &reg_enable;
-		hx711-en = &hx711_enable;
+		power-en = &sensor_pwr;
+		hx711-en = &hx711_pwr;
 	};
 
 };

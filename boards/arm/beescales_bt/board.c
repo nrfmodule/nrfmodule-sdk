@@ -4,6 +4,9 @@
  *
  * BeeScales BT early board init — sets REGOUT0 to 3.0V for battery operation.
  * One-time UICR write with reset. Runs in both MCUboot and application.
+ *
+ * Power rails (P1.04, P1.09) are handled via regulator-fixed DTS nodes
+ * which initialize at POST_KERNEL/75, before the QSPI driver at POST_KERNEL/80.
  */
 
 #include <zephyr/init.h>
