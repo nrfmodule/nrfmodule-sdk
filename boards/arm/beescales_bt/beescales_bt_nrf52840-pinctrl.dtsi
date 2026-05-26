@@ -1,0 +1,68 @@
+/*
+ * Copyright (c) 2026 nRFModule
+ * SPDX-License-Identifier: Apache-2.0
+ *
+ * Pin control for BeeScales BT custom PCB.
+ */
+
+&pinctrl {
+	/* I2C0: Accelerometer (LIS2DH12) + RTC */
+	i2c0_default: i2c0_default {
+		group1 {
+			psels = <NRF_PSEL(TWIM_SDA, 1, 10)>,
+				<NRF_PSEL(TWIM_SCL, 1, 11)>;
+		};
+	};
+
+	i2c0_sleep: i2c0_sleep {
+		group1 {
+			psels = <NRF_PSEL(TWIM_SDA, 1, 10)>,
+				<NRF_PSEL(TWIM_SCL, 1, 11)>;
+			low-power-enable;
+		};
+	};
+
+	/* QSPI: External flash (MX25L25645G) */
+	qspi_default: qspi_default {
+		group1 {
+			psels = <NRF_PSEL(QSPI_SCK, 0, 19)>,
+				<NRF_PSEL(QSPI_IO0, 0, 20)>,
+				<NRF_PSEL(QSPI_IO1, 0, 21)>,
+				<NRF_PSEL(QSPI_IO2, 0, 22)>,
+				<NRF_PSEL(QSPI_IO3, 0, 23)>,
+				<NRF_PSEL(QSPI_CSN, 0, 17)>;
+			nordic,drive-mode = <NRF_DRIVE_H0H1>;
+		};
+	};
+
+	qspi_sleep: qspi_sleep {
+		group1 {
+			psels = <NRF_PSEL(QSPI_SCK, 0, 19)>,
+				<NRF_PSEL(QSPI_IO0, 0, 20)>,
+				<NRF_PSEL(QSPI_IO1, 0, 21)>,
+				<NRF_PSEL(QSPI_IO2, 0, 22)>,
+				<NRF_PSEL(QSPI_IO3, 0, 23)>;
+			low-power-enable;
+		};
+		group2 {
+			psels = <NRF_PSEL(QSPI_CSN, 0, 17)>;
+			low-power-enable;
+			bias-pull-up;
+		};
+	};
+
+	/* PWM0: LED switch */
+	pwm0_default: pwm0_default {
+		group1 {
+			psels = <NRF_PSEL(PWM_OUT0, 0, 26)>;
+			nordic,invert;
+		};
+	};
+
+	pwm0_sleep: pwm0_sleep {
+		group1 {
+			psels = <NRF_PSEL(PWM_OUT0, 0, 26)>;
+			low-power-enable;
+		};
+	};
+};
