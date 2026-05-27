@@ -13,6 +13,7 @@ CONFIG_GPIO=y
 
 # Enable USB CDC ACM for console/shell/logging
 CONFIG_USB_DEVICE_STACK_NEXT=y
+CONFIG_SERIAL=y
 CONFIG_UART_USE_RUNTIME_CONFIGURE=y
 CONFIG_USBD_CDC_ACM_CLASS=y
 CONFIG_CDC_ACM_SERIAL_INITIALIZE_AT_BOOT=y
@@ -24,15 +25,21 @@ CONFIG_CDC_ACM_SERIAL_PID=0x0006
 CONFIG_I2C=y
 CONFIG_I2C_NRFX=y
 
-# Enable regulator framework for power-gated peripherals
+# Enable flash subsystem and regulator framework
+CONFIG_FLASH=y
 CONFIG_REGULATOR=y
 
-# Enable QSPI for external flash
+# Enable QSPI for external flash (init after regulator-fixed power-up delay)
 CONFIG_NORDIC_QSPI_NOR=y
 CONFIG_NORDIC_QSPI_NOR_FLASH_LAYOUT_PAGE_SIZE=4096
+CONFIG_NORDIC_QSPI_NOR_INIT_PRIORITY=90
 
 # Enable PWM for LED control
 CONFIG_PWM=y
 
 # Enable ADC for battery measurement
 CONFIG_ADC=y
+
+# Quiet USB subsystem logs by default (apps can override to DBG)
+CONFIG_USBD_LOG_LEVEL_WRN=y
+CONFIG_UDC_DRIVER_LOG_LEVEL_WRN=y
