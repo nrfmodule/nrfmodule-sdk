@@ -1,0 +1,16 @@
+# Copyright (c) 2026 nRFModule
+# SPDX-License-Identifier: Apache-2.0
+
+if BOARD_BEESCALES_BT
+
+config BOARD
+	default "beescales_bt"
+
+if BOARD_BEESCALES_BT_NRF52840
+
+config HW_STACK_PROTECTION
+	default ARCH_HAS_STACK_PROTECTION
+
+endif # BOARD_BEESCALES_BT_NRF52840
+
+endif # BOARD_BEESCALES_BT
