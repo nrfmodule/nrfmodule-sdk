@@ -1,0 +1,237 @@
+/*
+ * Copyright (c) 2026 nRFModule
+ * SPDX-License-Identifier: Apache-2.0
+ *
+ * BeeScales BT custom PCB — nRF52840 BLE-only beehive scale.
+ *
+ * Peripherals:
+ *   - 2x HX711 load cell ADCs (GPIO bit-bang)
+ *   - LIS2DH12 accelerometer (I2C, double-tap wake)
+ *   - External RTC (I2C, MAX31343 or DS1307)
+ *   - MX25L25645G 32MB QSPI flash (LittleFS)
+ *   - Battery voltage via ADC (1M/1M divider)
+ *   - PWM LED indicator
+ *
+ * Not present on PCB: UART, USB, SPI peripherals.
+ */
+
+/dts-v1/;
+#include <nordic/nrf52840_qiaa.dtsi>
+#include <nordic/nrf52840_partition.dtsi>
+#include "beescales_bt_nrf52840-pinctrl.dtsi"
+#include <zephyr/dt-bindings/gpio/gpio.h>
+#include <zephyr/dt-bindings/i2c/i2c.h>
+#include <zephyr/dt-bindings/pwm/pwm.h>
+
+/delete-node/ &storage_partition;
+
+/ {
+	model = "BeeScales BT nRF52840";
+	compatible = "nrfmodule,beescales-bt-nrf52840";
+
+	chosen {
+		zephyr,sram = &sram0;
+		zephyr,flash = &flash0;
+		zephyr,code-partition = &slot0_partition;
+		zephyr,console = &cdc_acm_uart0;
+		zephyr,shell-uart = &cdc_acm_uart0;
+		zephyr,uart-mcumgr = &cdc_acm_uart0;
+		nordic,pm-ext-flash = &mx25l256;
+	};
+
+	/*
+	 * Power rails — regulator-fixed with regulator-boot-on.
+	 * Init at POST_KERNEL/75, before QSPI driver at POST_KERNEL/80.
+	 */
+	sensor_pwr: sensor_pwr {
+		compatible = "regulator-fixed";
+		regulator-name = "sensor-vcc";
+		enable-gpios = <&gpio1 4 (GPIO_ACTIVE_HIGH | GPIO_PULL_UP)>;
+		regulator-boot-on;
+		startup-delay-us = <50000>;
+	};
+
+	hx711_pwr: hx711_pwr {
+		compatible = "regulator-fixed";
+		regulator-name = "hx711-vcc";
+		enable-gpios = <&gpio1 9 GPIO_ACTIVE_HIGH>;
+		regulator-boot-on;
+	};
+
+	/* HX711 Load Cell #1 */
+	hx711_1: hx711_1 {
+		compatible = "avia,hx711";
+		status = "okay";
+		dout-gpios = <&gpio0 12 (GPIO_ACTIVE_HIGH | GPIO_PULL_UP)>;
+		sck-gpios = <&gpio0 11 GPIO_ACTIVE_HIGH>;
+	};
+
+	/* HX711 Load Cell #2 */
+	hx711_2: hx711_2 {
+		compatible = "avia,hx711";
+		status = "okay";
+		dout-gpios = <&gpio0 27 (GPIO_ACTIVE_HIGH | GPIO_PULL_UP)>;
+		sck-gpios = <&gpio0 26 GPIO_ACTIVE_HIGH>;
+	};
+
+	/* Accelerometer interrupt pins */
+	accel_gpios {
+		compatible = "gpio-keys";
+		lis2dh12_int_1: lis2dh12_int_1 {
+			gpios = <&gpio1 12 GPIO_ACTIVE_HIGH>;
+			label = "Accelerometer interrupt pin 1";
+		};
+	};
+
+	/* Battery voltage measurement (1M/1M divider) */
+	vbatt {
+		compatible = "voltage-divider";
+		io-channels = <&adc 1>;
+		output-ohms = <1000000>;
+		full-ohms = <(1000000 + 1000000)>;
+	};
+
+	/* PWM LED */
+	pwmleds {
+		compatible = "pwm-leds";
+		pwm_led_sw: pwm_led_switch {
+			pwms = <&pwm0 0 PWM_MSEC(20) PWM_POLARITY_NORMAL>;
+		};
+	};
+
+	/* LittleFS automount */
+	fstab {
+		compatible = "zephyr,fstab";
+		lfs1: lfs1 {
+			compatible = "zephyr,fstab,littlefs";
+			mount-point = "/lfs1";
+			partition = <&lfs1_part>;
+			automount;
+			read-size = <16>;
+			prog-size = <16>;
+			cache-size = <64>;
+			lookahead-size = <32>;
+			block-cycles = <512>;
+		};
+	};
+
+	aliases {
+		acc-int-1 = &lis2dh12_int_1;
+		acc-i2c = &i2c0;
+		rtc-i2c = &i2c0;
+		led-switch = &pwm_led_sw;
+		power-en = &sensor_pwr;
+		hx711-en = &hx711_pwr;
+	};
+
+};
+
+&gpio0 {
+	status = "okay";
+};
+
+&gpio1 {
+	status = "okay";
+};
+
+&gpiote {
+	status = "okay";
+};
+
+/* I2C0: Accelerometer + RTC */
+&i2c0 {
+	compatible = "nordic,nrf-twim";
+	status = "okay";
+	clock-frequency = <I2C_BITRATE_STANDARD>;
+	pinctrl-0 = <&i2c0_default>;
+	pinctrl-1 = <&i2c0_sleep>;
+	pinctrl-names = "default", "sleep";
+
+	lis2dh12: lis2dh12@18 {
+		compatible = "st,lis2dh12", "st,lis2dh";
+		reg = <0x18>;
+		irq-gpios = <&gpio1 12 GPIO_ACTIVE_HIGH>;
+	};
+};
+
+/* QSPI Flash: MX25L25645G (32 MB) */
+&qspi {
+	status = "okay";
+	pinctrl-0 = <&qspi_default>;
+	pinctrl-1 = <&qspi_sleep>;
+	pinctrl-names = "default", "sleep";
+
+	mx25l256: mx25l25645g@0 {
+		compatible = "nordic,qspi-nor";
+		reg = <0>;
+		writeoc = "pp4io";
+		readoc = "read4io";
+		sck-frequency = <2000000>;
+		jedec-id = [c2 20 19];
+		size = <268435456>;
+		quad-enable-requirements = "S1B6";
+		has-dpd;
+		t-enter-dpd = <10000>;
+		t-exit-dpd = <35000>;
+		enter-4byte-addr = <0x87>;
+		address-size-32;
+	};
+};
+
+/* LittleFS partition on external flash */
+&mx25l256 {
+	partitions {
+		compatible = "fixed-partitions";
+		#address-cells = <1>;
+		#size-cells = <1>;
+
+		lfs1_part: partition@0 {
+			label = "storage";
+			reg = <0x00000000 DT_SIZE_K(8000)>;
+		};
+	};
+};
+
+/* PWM for LED control */
+&pwm0 {
+	status = "okay";
+	pinctrl-0 = <&pwm0_default>;
+	pinctrl-1 = <&pwm0_sleep>;
+	pinctrl-names = "default", "sleep";
+};
+
+/* ADC for battery voltage */
+&adc {
+	status = "okay";
+	#address-cells = <1>;
+	#size-cells = <0>;
+
+	channel@1 {
+		reg = <1>;
+		zephyr,gain = "ADC_GAIN_1_6";
+		zephyr,reference = "ADC_REF_INTERNAL";
+		zephyr,acquisition-time = <ADC_ACQ_TIME_DEFAULT>;
+		zephyr,input-positive = <NRF_SAADC_VDD>;
+		zephyr,resolution = <14>;
+		zephyr,oversampling = <8>;
+	};
+};
+
+/* USB CDC ACM for console/shell/logging */
+zephyr_udc0: &usbd {
+	compatible = "nordic,nrf-usbd";
+	status = "okay";
+
+	cdc_acm_uart0: cdc_acm_uart0 {
+		compatible = "zephyr,cdc-acm-uart";
+	};
+};
+
+/* Disabled peripherals (not connected on PCB) */
+&uart0 { status = "disabled"; };
+&uart1 { status = "disabled"; };
+&i2c1 { status = "disabled"; };
+&spi0 { status = "disabled"; };
+&spi1 { status = "disabled"; };
+&spi2 { status = "disabled"; };
+&spi3 { status = "disabled"; };
