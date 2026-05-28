@@ -4,10 +4,10 @@
 # SPDX-License-Identifier: LicenseRef-Nordic-5-Clause
 #
 
-# Source config from nrfmodule-core
-rsource "../../nrfmodule-core/src/client/Kconfig"
-rsource "../../nrfmodule-core/src/lib/ble_log/Kconfig"
-rsource "../../nrfmodule-core/src/drivers/gnss/Kconfig.l76"
-rsource "../../nrfmodule-core/src/drivers/gnss/Kconfig.assist"
-rsource "../../nrfmodule-core/src/drivers/gnss/Kconfig.extended"
+# Source config from nrfmodule-core (optional — not present in binary-only or non-modem builds)
+osource "../../nrfmodule-core/src/client/Kconfig"
+osource "../../nrfmodule-core/src/lib/ble_log/Kconfig"
+osource "../../nrfmodule-core/src/drivers/gnss/Kconfig.l76"
+osource "../../nrfmodule-core/src/drivers/gnss/Kconfig.assist"
+osource "../../nrfmodule-core/src/drivers/gnss/Kconfig.extended"
 
