@@ -112,7 +112,6 @@
 		regulator-name = "power-latch";
 		enable-gpios = <&gpio0 14 GPIO_ACTIVE_HIGH>;
 		regulator-boot-on;
-		regulator-always-on;
 	};
 
 	/*
