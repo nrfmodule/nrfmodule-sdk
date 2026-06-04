@@ -4,6 +4,10 @@
 CONFIG_ARM_MPU=y
 CONFIG_HW_STACK_PROTECTION=y
 
+# REGOUT0 voltage — set VDD to 3.0V via UICR on first boot
+CONFIG_BOARD_EARLY_INIT_HOOK=y
+
+
 # Enable hardware acceleration for crypto
 CONFIG_ENTROPY_NRF5_RNG=y
 
