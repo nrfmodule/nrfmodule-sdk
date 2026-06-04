@@ -5,9 +5,9 @@
 #
 
 # Source config from nrfmodule-core (optional — not present in binary-only or non-modem builds)
-osource "../../nrfmodule-core/src/client/Kconfig"
-osource "../../nrfmodule-core/src/lib/ble_log/Kconfig"
-osource "../../nrfmodule-core/src/drivers/gnss/Kconfig.l76"
-osource "../../nrfmodule-core/src/drivers/gnss/Kconfig.assist"
-osource "../../nrfmodule-core/src/drivers/gnss/Kconfig.extended"
+orsource "../../nrfmodule-core/src/client/Kconfig"
+orsource "../../nrfmodule-core/src/lib/ble_log/Kconfig"
+orsource "../../nrfmodule-core/src/drivers/gnss/Kconfig.l76"
+orsource "../../nrfmodule-core/src/drivers/gnss/Kconfig.assist"
+orsource "../../nrfmodule-core/src/drivers/gnss/Kconfig.extended"
 

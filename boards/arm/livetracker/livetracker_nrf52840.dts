@@ -25,6 +25,7 @@
 /dts-v1/;
 #include <nordic/nrf52840_qiaa.dtsi>
 #include <nordic/nrf52840_partition.dtsi>
+#include <zephyr/dt-bindings/regulator/nrf5x.h>
 #include "livetracker_nrf52840-pinctrl.dtsi"
 #include <zephyr/dt-bindings/gpio/gpio.h>
 #include <zephyr/dt-bindings/i2c/i2c.h>
@@ -104,10 +105,13 @@
 			gpios = <&gpio0 31 GPIO_ACTIVE_HIGH>;
 			label = "GPS Standby";
 		};
-		poweroff_pin: poweroff_pin {
-			gpios = <&gpio0 14 GPIO_ACTIVE_HIGH>;
-			label = "Power Off Control";
-		};
+	};
+
+	power_latch: power_latch {
+		compatible = "regulator-fixed";
+		regulator-name = "power-latch";
+		enable-gpios = <&gpio0 14 GPIO_ACTIVE_HIGH>;
+		regulator-boot-on;
 	};
 
 	/*
@@ -172,11 +176,16 @@
 		accel0 = &lis2dh12;
 		baro0 = &bmp390;
 		spi-flash0 = &mx25r64;
-		poweroff = &poweroff_pin;
+		poweroff = &power_latch;
 	};
 };
 
 /* Enable GPIO ports */
+/* REG1 DC/DC mode — requires 10µH inductor on DCCH (L3) */
+&reg1 {
+	regulator-initial-mode = <NRF5X_REG_MODE_DCDC>;
+};
+
 &gpio0 {
 	status = "okay";
 };
