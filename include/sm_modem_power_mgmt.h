@@ -79,6 +79,22 @@ int sm_modem_power_mgmt_ensure_awake(void);
 void sm_modem_power_mgmt_notify_activity(void);
 
 /**
+ * @brief Open a modem transaction, blocking auto-sleep for its duration.
+ *
+ * Bracket any wake+send that bypasses send_at() between txn_begin()/txn_end()
+ * so auto-sleep's AT#XSLEEP=2 (UART/DTR teardown) cannot race a send in flight.
+ *
+ * Re-entrant, but begin/end must run on the same thread, and every begin needs
+ * a matching end (including on error paths).
+ */
+void sm_modem_power_mgmt_txn_begin(void);
+
+/**
+ * @brief Close a modem transaction opened with txn_begin().
+ */
+void sm_modem_power_mgmt_txn_end(void);
+
+/**
  * @brief Pause automatic sleep (e.g. during LTE registration).
  *
  * Cancels any pending inactivity timer. Auto-sleep remains paused
