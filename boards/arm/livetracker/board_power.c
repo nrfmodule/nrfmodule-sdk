@@ -24,6 +24,7 @@
 #include <zephyr/usb/usbd.h>
 #include <zephyr/usb/usbd_msg.h>
 #include <zephyr/logging/log.h>
+#include <hal/nrf_power.h>
 
 LOG_MODULE_REGISTER(board);
 
@@ -31,7 +32,7 @@ LOG_MODULE_REGISTER(board);
  * Must run after cdc_acm_serial SYS_INIT which uses APPLICATION priority 90.
  * Same priority is safe - board library links after USB subsystem.
  */
-#define BOARD_USB_INIT_PRIORITY 90
+#define BOARD_USB_INIT_PRIORITY 90 /* style:no-paren — SYS_INIT pastes the priority, brackets break the build */
 
 static struct usbd_context *usb_ctx;
 static struct k_work usb_enable_work;
@@ -104,6 +105,11 @@ static int board_usb_power_init(void)
 	if (err) {
 		LOG_ERR("Failed to register USBD message callback: %d", err);
 		return err;
+	}
+
+	/* VBUS_READY is edge-only; seed it if the cable is already in at boot. */
+	if (nrf_power_usbregstatus_vbusdet_get(NRF_POWER)) {
+		k_work_submit(&usb_enable_work);
 	}
 
 	LOG_INF("Board USB power management initialized");
