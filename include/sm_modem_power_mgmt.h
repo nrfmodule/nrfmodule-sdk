@@ -79,6 +79,23 @@ int sm_modem_power_mgmt_ensure_awake(void);
 void sm_modem_power_mgmt_notify_activity(void);
 
 /**
+ * @brief Open a modem transaction, blocking auto-sleep for its duration.
+ *
+ * A caller that wakes the modem and then sends its own command (bypassing
+ * send_at()) MUST bracket the whole wake+send sequence between txn_begin() and
+ * txn_end(). The auto-sleep timer cannot run AT#XSLEEP=2 while a transaction is
+ * open, so the sleep's UART/DTR teardown can never race a wake or a send in
+ * flight. Re-entrant on the calling thread (ensure_awake() may be called
+ * inside). Always pair with txn_end(), including on error paths.
+ */
+void sm_modem_power_mgmt_txn_begin(void);
+
+/**
+ * @brief Close a modem transaction opened with txn_begin().
+ */
+void sm_modem_power_mgmt_txn_end(void);
+
+/**
  * @brief Pause automatic sleep (e.g. during LTE registration).
  *
  * Cancels any pending inactivity timer. Auto-sleep remains paused
