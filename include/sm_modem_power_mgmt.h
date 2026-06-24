@@ -81,12 +81,11 @@ void sm_modem_power_mgmt_notify_activity(void);
 /**
  * @brief Open a modem transaction, blocking auto-sleep for its duration.
  *
- * A caller that wakes the modem and then sends its own command (bypassing
- * send_at()) MUST bracket the whole wake+send sequence between txn_begin() and
- * txn_end(). The auto-sleep timer cannot run AT#XSLEEP=2 while a transaction is
- * open, so the sleep's UART/DTR teardown can never race a wake or a send in
- * flight. Re-entrant on the calling thread (ensure_awake() may be called
- * inside). Always pair with txn_end(), including on error paths.
+ * Bracket any wake+send that bypasses send_at() between txn_begin()/txn_end()
+ * so auto-sleep's AT#XSLEEP=2 (UART/DTR teardown) cannot race a send in flight.
+ *
+ * Re-entrant, but begin/end must run on the same thread, and every begin needs
+ * a matching end (including on error paths).
  */
 void sm_modem_power_mgmt_txn_begin(void);
 
