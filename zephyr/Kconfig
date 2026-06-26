@@ -11,3 +11,6 @@ orsource "../../nrfmodule-core/src/drivers/gnss/Kconfig.l76"
 orsource "../../nrfmodule-core/src/drivers/gnss/Kconfig.assist"
 orsource "../../nrfmodule-core/src/drivers/gnss/Kconfig.extended"
 
+# Open-source utilities distributed as SDK source (not in nrfmodule-core)
+rsource "../lib/led/Kconfig"
+

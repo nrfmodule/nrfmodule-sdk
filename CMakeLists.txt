@@ -1,6 +1,13 @@
 zephyr_library()
 zephyr_include_directories(include)
 
+# Open-source SDK utilities (compiled from source, not the private binary).
+zephyr_library_sources_ifdef(CONFIG_NRFMODULE_RGB_LED
+    lib/led/led_effect.c
+    lib/led/led_arbiter.c
+    lib/led/rgb_led.c
+)
+
 get_filename_component(WEST_TOP "${CMAKE_CURRENT_LIST_DIR}/../../.." ABSOLUTE)
 set(PRIVATE_SRC "${WEST_TOP}/modules/lib/nrfmodule-core")
 
