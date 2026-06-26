@@ -2,7 +2,7 @@
  * Copyright (c) 2026 nRFModule
  * SPDX-License-Identifier: Apache-2.0
  *
- * Pure LED effect renderer — no hardware, unit-tested.
+ * Pure LED effect renderer.
  */
 
 #include <led/led_effect.h>
@@ -11,7 +11,8 @@
 
 static uint8_t lerp8(uint8_t a, uint8_t b, uint32_t num, uint32_t den)
 {
-	/* Fixed-width: delta*num reaches ~127500, past INT16_MAX on a 16-bit int. */
+	/* int32 math: 255*num stays < INT32_MAX for fade steps up to ~2.3h;
+	 * a 16-bit int would overflow. */
 	int32_t delta = (int32_t)b - (int32_t)a;
 
 	return (uint8_t)((int32_t)a + delta * (int32_t)num / (int32_t)den);

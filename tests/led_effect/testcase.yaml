@@ -1,0 +1,5 @@
+tests:
+  nrfmodule.led.effect:
+    tags: led
+    platform_allow:
+      - qemu_cortex_m0

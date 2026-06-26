@@ -17,6 +17,11 @@
  *
  * Backend: a `pwm-leds` (CONFIG_LED_PWM) node with three channels. The product
  * supplies the device and the channel indices.
+ *
+ * @note Output is driven via led_set_brightness() (0-100%), so the 8-bit
+ *       led_color channels are quantized to ~100 levels: low values (0-2) round
+ *       to off, and fades band slightly. Fine for a status indicator; for full
+ *       8-bit depth, drive the PWM directly in a sibling of this file.
  */
 
 #include <led/led_arbiter.h>

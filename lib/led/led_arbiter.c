@@ -2,11 +2,12 @@
  * Copyright (c) 2026 nRFModule
  * SPDX-License-Identifier: Apache-2.0
  *
- * Pure LED priority arbiter — no hardware, unit-tested.
+ * Pure LED priority arbiter.
  */
 
 #include <led/led_arbiter.h>
 
+#include <zephyr/sys/__assert.h>
 #include <stddef.h>
 #include <string.h>
 
@@ -37,6 +38,8 @@ void led_arbiter_set(struct led_arbiter *a, uint8_t layer,
 		     const struct led_effect *effect, uint32_t now_ms,
 		     uint32_t lifetime_ms)
 {
+	__ASSERT(layer < LED_ARBITER_MAX_LAYERS, "layer %u >= %d", layer,
+		 LED_ARBITER_MAX_LAYERS);
 	if (layer >= LED_ARBITER_MAX_LAYERS) {
 		return;
 	}
@@ -48,6 +51,8 @@ void led_arbiter_set(struct led_arbiter *a, uint8_t layer,
 
 void led_arbiter_clear(struct led_arbiter *a, uint8_t layer)
 {
+	__ASSERT(layer < LED_ARBITER_MAX_LAYERS, "layer %u >= %d", layer,
+		 LED_ARBITER_MAX_LAYERS);
 	if (layer < LED_ARBITER_MAX_LAYERS) {
 		a->slots[layer].effect = NULL;
 	}
