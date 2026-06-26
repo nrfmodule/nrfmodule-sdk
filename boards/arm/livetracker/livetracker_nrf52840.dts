@@ -30,6 +30,7 @@
 #include <zephyr/dt-bindings/gpio/gpio.h>
 #include <zephyr/dt-bindings/i2c/i2c.h>
 #include <zephyr/dt-bindings/input/input-event-codes.h>
+#include <zephyr/dt-bindings/pwm/pwm.h>
 
 / {
 	model = "LiveTracker nRF52840";
@@ -115,25 +116,26 @@
 	};
 
 	/*
-	 * RGB LED (D4 - Common Anode, active low)
+	 * RGB LED (D4 - Common Anode, active low) on PWM0 so the status indicator
+	 * can fade/mix colours. PWM_POLARITY_INVERTED -> brightness 100% = full on.
 	 *
-	 * Red:   nRF52840 P1.11 (ball A3)
-	 * Green: nRF52840 P1.13 (ball A4)
-	 * Blue:  nRF52840 P0.03 (ball A5)
+	 * Red:   nRF52840 P1.11 (ball A3) -> pwm0 ch0
+	 * Green: nRF52840 P1.13 (ball A4) -> pwm0 ch1
+	 * Blue:  nRF52840 P0.03 (ball A5) -> pwm0 ch2
 	 */
-	leds {
-		compatible = "gpio-leds";
-		led_red: led_0 {
-			gpios = <&gpio1 11 GPIO_ACTIVE_LOW>;
-			label = "Red LED";
+	rgb_pwm: pwmleds {
+		compatible = "pwm-leds";
+		pwm_led_red: pwm_led_0 {
+			pwms = <&pwm0 0 PWM_MSEC(1) PWM_POLARITY_INVERTED>;
+			label = "RGB red";
 		};
-		led_green: led_1 {
-			gpios = <&gpio1 13 GPIO_ACTIVE_LOW>;
-			label = "Green LED";
+		pwm_led_green: pwm_led_1 {
+			pwms = <&pwm0 1 PWM_MSEC(1) PWM_POLARITY_INVERTED>;
+			label = "RGB green";
 		};
-		led_blue: led_2 {
-			gpios = <&gpio0 3 GPIO_ACTIVE_LOW>;
-			label = "Blue LED";
+		pwm_led_blue: pwm_led_2 {
+			pwms = <&pwm0 2 PWM_MSEC(1) PWM_POLARITY_INVERTED>;
+			label = "RGB blue";
 		};
 	};
 
@@ -167,9 +169,9 @@
 
 	/* Aliases for common usage */
 	aliases {
-		led0 = &led_red;
-		led1 = &led_green;
-		led2 = &led_blue;
+		pwm-led0 = &pwm_led_red;
+		pwm-led1 = &pwm_led_green;
+		pwm-led2 = &pwm_led_blue;
 		sw0 = &button0;
 		sm-uart = &uart0;
 		gps-uart = &uart1;
@@ -197,6 +199,14 @@
 /* Enable GPIOTE for GPIO interrupt/event support */
 &gpiote {
 	status = "okay";
+};
+
+/* RGB status LED (D4) — drives rgb_pwm via three PWM0 channels */
+&pwm0 {
+	status = "okay";
+	pinctrl-0 = <&pwm0_rgb_default>;
+	pinctrl-1 = <&pwm0_rgb_sleep>;
+	pinctrl-names = "default", "sleep";
 };
 
 /*
