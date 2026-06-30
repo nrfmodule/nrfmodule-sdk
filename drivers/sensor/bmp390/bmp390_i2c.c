@@ -4,7 +4,7 @@
  * Copyright (c) 2021 Nordic Semiconductor ASA
  *
  * SPDX-License-Identifier: Apache-2.0
- * nrfmodule-lint: vendored - faithful copy of the Zephyr bmp388 driver; not house-style.
+ * nrfmodule-lint: vendored - faithful copy of Zephyr bmp388 (TURN_ON re-init added); not house-style.
  */
 
 /*

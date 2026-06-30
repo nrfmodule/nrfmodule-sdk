@@ -8,6 +8,16 @@ zephyr_library_sources_ifdef(CONFIG_NRFMODULE_RGB_LED
     lib/led/rgb_led.c
 )
 
+# Vendored BMP390 driver: stock bmp388 + a PM_DEVICE_ACTION_TURN_ON re-init, so
+# the chip survives its rail being power-gated (see drivers/sensor/bmp390).
+zephyr_library_sources_ifdef(CONFIG_NRFMODULE_BMP390
+    drivers/sensor/bmp390/bmp390.c
+    drivers/sensor/bmp390/bmp390_i2c.c
+)
+if(CONFIG_NRFMODULE_BMP390)
+    zephyr_include_directories(drivers/sensor/bmp390)
+endif()
+
 get_filename_component(WEST_TOP "${CMAKE_CURRENT_LIST_DIR}/../../.." ABSOLUTE)
 set(PRIVATE_SRC "${WEST_TOP}/modules/lib/nrfmodule-core")
 

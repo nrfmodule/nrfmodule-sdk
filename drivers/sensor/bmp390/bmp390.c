@@ -3,7 +3,7 @@
  * Copyright (c) 2020 Facebook, Inc. and its affiliates
  *
  * SPDX-License-Identifier: Apache-2.0
- * nrfmodule-lint: vendored - faithful copy of the Zephyr bmp388 driver; not house-style.
+ * nrfmodule-lint: vendored - faithful copy of Zephyr bmp388 (TURN_ON re-init added); not house-style.
  *
  * Datasheet:
  * https://www.bosch-sensortec.com/media/boschsensortec/downloads/datasheets/bst-bmp388-ds001.pdf
@@ -15,7 +15,7 @@
 
 #include "bmp390.h"
 
-LOG_MODULE_REGISTER(BMP388, CONFIG_SENSOR_LOG_LEVEL);
+LOG_MODULE_REGISTER(BMP390, CONFIG_SENSOR_LOG_LEVEL);
 
 enum chipset_id {
 	BMP388_ID = 0x50,
@@ -413,6 +413,8 @@ static int bmp388_get_calibration_data(const struct device *dev)
 }
 
 #ifdef CONFIG_PM_DEVICE
+static int bmp388_chip_init(const struct device *dev);
+
 static int bmp388_pm_action(const struct device *dev,
 			    enum pm_device_action action)
 {
@@ -425,6 +427,15 @@ static int bmp388_pm_action(const struct device *dev,
 	case PM_DEVICE_ACTION_SUSPEND:
 		reg_val = BMP388_PWR_CTRL_MODE_SLEEP;
 		break;
+	case PM_DEVICE_ACTION_TURN_ON:
+		/* Power domain just restored the rail: the chip lost its config,
+		 * so re-run the full chip init (soft-reset, calibration, ODR/OSR/
+		 * IIR). RESUME/SUSPEND then drive NORMAL/SLEEP as usual. This
+		 * TURN_ON re-init is why this driver is vendored vs. the stock one. */
+		return bmp388_chip_init(dev);
+	case PM_DEVICE_ACTION_TURN_OFF:
+		/* Rail about to be gated; the chip loses power, nothing to do. */
+		return 0;
 	default:
 		return -ENOTSUP;
 	}
@@ -450,7 +461,7 @@ static DEVICE_API(sensor, bmp388_api) = {
 	.channel_get = bmp388_channel_get,
 };
 
-static int bmp388_init(const struct device *dev)
+static int bmp388_chip_init(const struct device *dev)
 {
 	struct bmp388_data *bmp3xx = dev->data;
 	const struct bmp388_config *cfg = dev->config;
@@ -536,6 +547,22 @@ static int bmp388_init(const struct device *dev)
 	return 0;
 }
 
+static int bmp388_init(const struct device *dev)
+{
+	/* Probe the bus, then let the PM framework drive the chip into its initial
+	 * state via the action callback (TURN_ON -> chip config). Mirrors the stock
+	 * LIS2DH driver; this is what makes the power-domain re-init work. */
+	if (bmp388_bus_check(dev) < 0) {
+		LOG_DBG("bus check failed");
+		return -ENODEV;
+	}
+#if defined(CONFIG_PM_DEVICE)
+	return pm_device_driver_init(dev, bmp388_pm_action);
+#else
+	return bmp388_chip_init(dev);
+#endif
+}
+
 /* Initializes a struct bmp388_config for an instance on a SPI bus. */
 #define BMP388_CONFIG_SPI(inst)				\
 	.bus.spi = SPI_DT_SPEC_INST_GET(inst, BMP388_SPI_OPERATION, 0),	\
@@ -575,10 +602,9 @@ static int bmp388_init(const struct device *dev)
 				    &bmp388_data_##inst##chipid, &bmp388_config_##inst##chipid,\
 					POST_KERNEL, CONFIG_SENSOR_INIT_PRIORITY, &bmp388_api);
 
-#define DT_DRV_COMPAT bosch_bmp388
-DT_INST_FOREACH_STATUS_OKAY_VARGS(BMP3XX_INST, BMP388_ID)
-#undef DT_DRV_COMPAT
-
+/* Vendored bmp390-only: the stock bosch,bmp388 instance block is dropped. This
+ * driver claims only bosch,bmp390 and is mutually exclusive with the stock
+ * BMP388 driver (CONFIG_BMP388=n, enforced by Kconfig `depends on !BMP388`). */
 #define DT_DRV_COMPAT bosch_bmp390
 DT_INST_FOREACH_STATUS_OKAY_VARGS(BMP3XX_INST, BMP390_ID)
 #undef DT_DRV_COMPAT
