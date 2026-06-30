@@ -13,4 +13,5 @@ orsource "../../nrfmodule-core/src/drivers/gnss/Kconfig.extended"
 
 # Open-source utilities distributed as SDK source (not in nrfmodule-core)
 rsource "../lib/led/Kconfig"
+rsource "../drivers/sensor/bmp390/Kconfig"
 

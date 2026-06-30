@@ -3,14 +3,14 @@
  * Copyright (c) 2020 Facebook, Inc. and its affiliates
  *
  * SPDX-License-Identifier: Apache-2.0
- * nrfmodule-lint: vendored - faithful copy of the Zephyr bmp388 driver; not house-style.
+ * nrfmodule-lint: vendored - faithful copy of Zephyr bmp388 (TURN_ON re-init added); not house-style.
  *
  * Datasheet:
  * https://www.bosch-sensortec.com/media/boschsensortec/downloads/datasheets/bst-bmp388-ds001.pdf
  */
 
-#ifndef ZEPHYR_BMP388_H
-#define ZEPHYR_BMP388_H
+#ifndef NRFMODULE_BMP390_H
+#define NRFMODULE_BMP390_H
 
 #include <zephyr/device.h>
 #include <zephyr/devicetree.h>

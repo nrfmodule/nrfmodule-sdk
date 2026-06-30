@@ -84,12 +84,19 @@
 	 *
 	 * NOTE: Application must enable these before using sensors/GPS
 	 */
+	/* Sensor rail (TPS22916 load switch). regulator-fixed so the app gates it
+	 * directly (regulator_enable/disable) and re-inits the chips over PM actions;
+	 * boot-on so the I2C sensor drivers can probe at init. */
 	sensor_pwr: sensor_pwr {
 		compatible = "regulator-fixed";
-		regulator-name = "sensor-vcc";
+		regulator-name = "sensor_pwr";
 		enable-gpios = <&gpio1 4 GPIO_ACTIVE_HIGH>;
 		regulator-boot-on;
+		/* startup-delay-us is applied only at boot init; off-on-delay-us is
+		 * what regulator_enable() honors on each runtime gate. Set both so the
+		 * TPS22916 + sensor POR settle (~50ms) before the I2C re-init. */
 		startup-delay-us = <50000>;
+		off-on-delay-us = <50000>;
 	};
 
 	power_control {

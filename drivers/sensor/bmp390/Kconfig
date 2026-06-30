@@ -1,0 +1,14 @@
+# Copyright (c) 2026 nRFModule
+# SPDX-License-Identifier: Apache-2.0
+
+config NRFMODULE_BMP390
+	bool "nRFModule BMP390 driver with power-cycle re-init"
+	depends on SENSOR && I2C
+	depends on !BMP388
+	help
+	  Out-of-tree BMP390 (BMP388 family) sensor driver that re-initializes the
+	  chip on PM_DEVICE_ACTION_TURN_ON, so it recovers after its power rail is
+	  gated via a Zephyr power domain (the stock BMP388 driver has no TURN_ON
+	  and wedges after power loss). A faithful copy of the in-tree bmp388 driver
+	  plus that one re-init; reuses the in-tree bosch,bmp390 binding/compatible.
+	  Mutually exclusive with the stock driver — set CONFIG_BMP388=n.
