@@ -346,5 +346,8 @@ zephyr_udc0: &usbd {
 
 	cdc_acm_uart0: cdc_acm_uart0 {
 		compatible = "zephyr,cdc-acm-uart";
+		/* iInterface string -> host names the port instead of the
+		 * generic "USB Serial Device". Override in an app overlay. */
+		label = "LiveTracker Shell";
 	};
 };
