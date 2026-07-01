@@ -222,7 +222,7 @@
  * TX:  P0.06 -> nRF9151 P0.11
  * RX:  P0.08 <- nRF9151 P0.10
  * No hardware flow control (RTS/CTS disabled)
- * 
+ *
  * To enable HW flow control, uncomment below and update pinctrl:
  *   RTS: P1.03 -> nRF9151 P0.12
  *   CTS: P1.06 <- nRF9151 P0.09
@@ -280,7 +280,7 @@
 
 	/*
 	 * BMP390 Barometer
-	 * 
+	 *
 	 * Supported via BMP388 driver (bosch,bmp390 compatible)
 	 */
 	bmp390: bmp390@76 {
@@ -346,8 +346,6 @@ zephyr_udc0: &usbd {
 
 	cdc_acm_uart0: cdc_acm_uart0 {
 		compatible = "zephyr,cdc-acm-uart";
-		/* iInterface string -> host names the port instead of the
-		 * generic "USB Serial Device". Override in an app overlay. */
-		label = "LiveTracker Shell";
+		label = "LiveTracker";
 	};
 };
