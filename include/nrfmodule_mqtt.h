@@ -73,6 +73,15 @@ struct nrfmodule_mqtt_evt {
 
 struct nrfmodule_mqtt_client;
 
+/*
+ * AT-argument safety contract: caller-supplied strings embedded into AT
+ * command arguments — client_id, broker, user_name, password and all topic
+ * strings — must not contain a double quote ('"'), carriage return or line
+ * feed. The AT transport has no escape mechanism, so such a byte would break
+ * out of the quoted argument and could inject arbitrary AT commands. Entry
+ * points receiving a violating field return -EINVAL and send nothing.
+ */
+
 /** @brief MQTT event callback. */
 typedef void (*nrfmodule_mqtt_evt_cb_t)(struct nrfmodule_mqtt_client *client,
                                         const struct nrfmodule_mqtt_evt *evt);
@@ -110,6 +119,7 @@ struct nrfmodule_mqtt_subscription_list {
  *
  * @param client Client structure.
  * @return 0 on success, negative errno on failure.
+ * @retval -EINVAL @c client_id contains '"', CR or LF.
  */
 int nrfmodule_mqtt_init(struct nrfmodule_mqtt_client *client);
 
@@ -118,6 +128,7 @@ int nrfmodule_mqtt_init(struct nrfmodule_mqtt_client *client);
  *
  * @param client Client structure.
  * @return 0 on success, negative errno on failure.
+ * @retval -EINVAL @c broker, @c user_name or @c password contains '"', CR or LF.
  */
 int nrfmodule_mqtt_connect(struct nrfmodule_mqtt_client *client);
 
@@ -135,6 +146,7 @@ int nrfmodule_mqtt_disconnect(struct nrfmodule_mqtt_client *client);
  * @param client Client structure.
  * @param param Publish parameters.
  * @return 0 on success, negative errno on failure.
+ * @retval -EINVAL the topic string contains '"', CR or LF.
  */
 int nrfmodule_mqtt_publish(struct nrfmodule_mqtt_client *client,
                            const struct nrfmodule_mqtt_publish_param *param);
@@ -145,6 +157,7 @@ int nrfmodule_mqtt_publish(struct nrfmodule_mqtt_client *client,
  * @param client Client structure.
  * @param param Subscription list.
  * @return 0 on success, negative errno on failure.
+ * @retval -EINVAL any topic in the list contains '"', CR or LF (nothing is sent).
  */
 int nrfmodule_mqtt_subscribe(struct nrfmodule_mqtt_client *client,
                              const struct nrfmodule_mqtt_subscription_list *param);
@@ -155,6 +168,7 @@ int nrfmodule_mqtt_subscribe(struct nrfmodule_mqtt_client *client,
  * @param client Client structure.
  * @param param Subscription list.
  * @return 0 on success, negative errno on failure.
+ * @retval -EINVAL any topic in the list contains '"', CR or LF (nothing is sent).
  */
 int nrfmodule_mqtt_unsubscribe(struct nrfmodule_mqtt_client *client,
                                const struct nrfmodule_mqtt_subscription_list *param);
