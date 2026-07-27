@@ -21,14 +21,14 @@
 extern "C" {
 #endif
 
-#define CONFIG_SLM_AT_CMD_MAX_LEN 2024
+#define CONFIG_SLM_AT_CMD_MAX_LEN (2024)
 
 /** @brief Modem response type for 'ERROR' responses. */
-#define NRF_MODEM_AT_ERROR 1
+#define NRF_MODEM_AT_ERROR (1)
 /** @brief Modem response type for '+CME ERROR' responses. */
-#define NRF_MODEM_AT_CME_ERROR 2
+#define NRF_MODEM_AT_CME_ERROR (2)
 /** @brief Modem response type for '+CMS ERROR' responses. */
-#define NRF_MODEM_AT_CMS_ERROR 3
+#define NRF_MODEM_AT_CMS_ERROR (3)
 
 /**
  * @brief AT Notification handler prototype.
@@ -182,6 +182,32 @@ int nrf_modem_at_cmd_async(nrf_modem_at_resp_handler_t callback, const char *fmt
 
 int nrf_modem_at_datamode_send(const void *data, size_t len);
 
+/**
+ * @brief Send an AT command that opens datamode and its payload as one
+ * atomic, locked transaction.
+ *
+ * Command, payload and the datamode escape sequence ("+++") all run under
+ * the single AT lock: no other AT caller and no auto-sleep can interleave
+ * into the datamode window between the command and its payload. Prefer this
+ * over separate @c nrf_modem_at_printf() + @c nrf_modem_at_datamode_send()
+ * calls, which have an unlocked gap between them.
+ *
+ * On a command timeout, the escape sequence is still sent and stray bytes
+ * are drained before the lock is released, in case the modem already entered
+ * datamode before the timeout fired.
+ *
+ * @param cmd Pre-formatted AT command that opens datamode (no terminator).
+ * @param data Payload to send once datamode is open.
+ * @param len Length of @p data.
+ *
+ * @retval 0 On success.
+ * @retval -EINVAL @p cmd or @p data is NULL, or @p len is zero.
+ * @retval -EAGAIN The AT lock could not be acquired.
+ * @returns Other negative errno or positive AT error code from @p cmd or the
+ * payload/escape send, per @ref nrf_modem_at_cmd.
+ */
+int nrf_modem_at_cmd_datamode(const char *cmd, const void *data, size_t len);
+
 /** @brief AT command handler prototype.
  *
  * Implements a custom AT command in the application.
@@ -240,10 +266,11 @@ int nrf_modem_at_cmd_custom_set(struct nrf_modem_at_cmd_custom *custom_commands,
  * This function configures how long @c nrf_modem_at_printf, @c nrf_modem_at_scanf and
  * @c nrf_modem_at_cmd shall wait for ongoing AT commands to complete.
  *
- * By default, the timeout is infinite.
+ * By default, the timeout is 10 seconds.
  *
- * @param timeout_ms Timeout in milliseconds. Use NRF_MODEM_OS_FOREVER for infinite timeout
- *		     or NRF_MODEM_OS_NO_WAIT for no timeout.
+ * @param timeout_ms Timeout in milliseconds. A negative value waits indefinitely
+ *		     for the modem response (lock acquisition stays bounded);
+ *		     0 makes lock acquisition a trylock.
  *
  * @return int Zero on success, a negative errno otherwise.
  */
