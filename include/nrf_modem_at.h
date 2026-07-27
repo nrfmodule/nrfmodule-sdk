@@ -56,40 +56,31 @@ int nrf_modem_at_notif_handler_set(nrf_modem_at_notif_handler_t callback);
 /**
  * @brief AT link-dark event handler prototype.
  *
- * @param consecutive_timeouts The number of consecutive AT command timeouts
- * that triggered this event (at least CONFIG_NRFMODULE_AT_TIMEOUT_RECOVERY_THRESHOLD).
+ * @param consecutive_timeouts Consecutive AT command timeouts that triggered
+ * the event (>= CONFIG_NRFMODULE_AT_TIMEOUT_RECOVERY_THRESHOLD).
  *
- * @note Invoked from the failing AT caller's thread, with the AT lock held.
- * That thread is frequently a workqueue -- do not block in the handler;
- * defer the recovery decision to your own thread instead. Because the AT
- * lock is held for the duration of the call, the handler must also not wait
- * on another thread that itself takes the AT lock (deadlock until that
- * thread's lock acquisition times out). Calling @c nrf_modem_lib_reset()
- * inline IS permitted -- the lock is owner-recursive, and the reset
- * suppresses the wake-retry ladder and further timeout counting for its own
- * duration -- but it blocks the calling context for up to ~55 seconds in
- * the worst case (two probe rounds plus a DTR cycle); prefer deferring even
- * that to your own thread.
+ * @note Called from the failing AT caller's thread (often a workqueue) with
+ * the AT lock held: do not block, and do not wait on another thread that
+ * itself takes the AT lock. Calling @c nrf_modem_lib_reset() inline is
+ * permitted (the lock is owner-recursive; the reset suppresses the wake
+ * ladder and further counting for its duration), but it can block the
+ * caller for ~55 s worst case -- prefer deferring recovery to your own
+ * thread.
  */
 typedef void (*nrf_modem_at_link_dark_handler_t)(int32_t consecutive_timeouts);
 
 /**
  * @brief Register a handler for the AT link-dark event.
  *
- * The modem library counts consecutive AT command timeouts. Once
- * CONFIG_NRFMODULE_AT_TIMEOUT_RECOVERY_THRESHOLD consecutive timeouts have
- * occurred, and at least CONFIG_NRFMODULE_AT_TIMEOUT_RECOVERY_SPACING_S
- * seconds have passed since the last time this event fired, the registered
- * handler (if any) is invoked. The library does not reset or otherwise act
- * on the modem itself unless CONFIG_NRFMODULE_AT_TIMEOUT_AUTO_RESET is
- * enabled -- recovery policy (reset, power-cycle, log-and-wait, escalate)
- * is left to the product.
+ * Fires after CONFIG_NRFMODULE_AT_TIMEOUT_RECOVERY_THRESHOLD consecutive AT
+ * command timeouts, at most once per
+ * CONFIG_NRFMODULE_AT_TIMEOUT_RECOVERY_SPACING_S seconds. The library takes
+ * no recovery action itself unless CONFIG_NRFMODULE_AT_TIMEOUT_AUTO_RESET is
+ * enabled -- recovery policy is the product's.
  *
- * Registering a new handler replaces any previously registered one. Safe to
- * call at any time, including while AT transactions are in flight -- but
- * this call returning does not guarantee that a handler invocation already
- * in progress on another thread has finished; a just-replaced or
- * just-cleared handler may still be observed running briefly afterward.
+ * Replaces any previously registered handler. Safe to call at any time, but
+ * an invocation already in progress on another thread may still be observed
+ * running briefly after this returns.
  *
  * @param handler The link-dark event handler. Use @c NULL to unset.
  *
