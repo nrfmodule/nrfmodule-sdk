@@ -29,7 +29,7 @@ extern "C" {
 #include <zephyr/toolchain.h>
 
 /** Max size of AT command response is 2100 bytes. */
-#define SM_AT_CMD_RESPONSE_MAX_LEN 2100
+#define SM_AT_CMD_RESPONSE_MAX_LEN (2100)
 
 /**
  * @brief AT command result codes
@@ -162,9 +162,9 @@ struct sm_monitor_entry {
 /** Wildcard. Match any notifications. */
 #define MON_ANY NULL
 /** Monitor is paused. */
-#define MON_PAUSED 1
+#define MON_PAUSED 1 /* style:no-paren: COND_CODE_1() in SM_MONITOR() requires the bare token 1 */
 /** Monitor is active, default */
-#define MON_ACTIVE 0
+#define MON_ACTIVE 0 /* style:no-paren: matches MON_PAUSED; not itself token-pasted but kept symmetric */
 
 /**
  * @brief Define an Serial Modem monitor to receive notifications in the system workqueue thread.
@@ -207,6 +207,18 @@ static inline void sm_monitor_resume(struct sm_monitor_entry *mon)
 {
 	mon->paused = MON_ACTIVE;
 }
+
+/**
+ * @brief Number of URC notifications dropped due to sm_monitor's queueing heap
+ * being exhausted (NRFMODULE_SM_AT_CLIENT_MONITOR_HEAP_SIZE too small for the
+ * current notification burst).
+ *
+ * @note Monotonically increasing; wraps at UINT32_MAX (informational counter,
+ * not an exact lifetime total once wrapped).
+ *
+ * @return Total number of notifications dropped so far.
+ */
+uint32_t sm_monitor_dropped_count(void);
 
 #ifdef __cplusplus
 }
