@@ -62,7 +62,15 @@ struct nrfmodule_mqtt_publish_param {
     uint8_t retain_flag;
 };
 
-/** @brief MQTT event structure. */
+/**
+ * @brief MQTT event structure.
+ *
+ * @note For NRFMODULE_MQTT_EVT_PUBLISH, the topic/payload pointers are only
+ * valid for the duration of the evt_cb call; copy out anything needed beyond it.
+ * @note A PUBLISH payload containing CR/LF or bytes matching a registered URC
+ * filter may be dropped at the URC-dispatch layer instead of delivered: a lost
+ * message is counted and logged, never delivered corrupted.
+ */
 struct nrfmodule_mqtt_evt {
     enum nrfmodule_mqtt_evt_type type;
     int result;
@@ -82,7 +90,12 @@ struct nrfmodule_mqtt_client;
  * points receiving a violating field return -EINVAL and send nothing.
  */
 
-/** @brief MQTT event callback. */
+/**
+ * @brief MQTT event callback.
+ *
+ * @note Runs on the URC dispatch context (system workqueue). Must not block or
+ * issue AT commands (including via any nrfmodule_mqtt_* call).
+ */
 typedef void (*nrfmodule_mqtt_evt_cb_t)(struct nrfmodule_mqtt_client *client,
                                         const struct nrfmodule_mqtt_evt *evt);
 
@@ -172,6 +185,17 @@ int nrfmodule_mqtt_subscribe(struct nrfmodule_mqtt_client *client,
  */
 int nrfmodule_mqtt_unsubscribe(struct nrfmodule_mqtt_client *client,
                                const struct nrfmodule_mqtt_subscription_list *param);
+
+/**
+ * @brief Number of #XMQTTMSG frames dropped by the reassembly accumulator
+ * (malformed, out-of-limits, suspect/spliced framing, or timed out).
+ *
+ * @note Monotonically increasing; wraps at UINT32_MAX (informational counter,
+ * not an exact lifetime total once wrapped).
+ *
+ * @return Total number of PUBLISH frames dropped so far.
+ */
+uint32_t nrfmodule_mqtt_msg_dropped_count(void);
 
 #ifdef __cplusplus
 }
