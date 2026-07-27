@@ -16,6 +16,7 @@
 
 #include <stddef.h>
 #include <stdbool.h>
+#include <stdint.h>
 
 #ifdef __cplusplus
 extern "C" {
@@ -51,6 +52,41 @@ typedef void (*nrf_modem_at_notif_handler_t)(const char *notif);
  * @retval 0 On success.
  */
 int nrf_modem_at_notif_handler_set(nrf_modem_at_notif_handler_t callback);
+
+/**
+ * @brief AT link-dark event handler prototype.
+ *
+ * @param consecutive_timeouts Consecutive AT command timeouts that triggered
+ * the event (>= CONFIG_NRFMODULE_AT_TIMEOUT_RECOVERY_THRESHOLD).
+ *
+ * @note Called from the failing AT caller's thread (often a workqueue) with
+ * the AT lock held: do not block, and do not wait on another thread that
+ * itself takes the AT lock. Calling @c nrf_modem_lib_reset() inline is
+ * permitted (the lock is owner-recursive; the reset suppresses the wake
+ * ladder and further counting for its duration), but it can block the
+ * caller for ~55 s worst case -- prefer deferring recovery to your own
+ * thread.
+ */
+typedef void (*nrf_modem_at_link_dark_handler_t)(int32_t consecutive_timeouts);
+
+/**
+ * @brief Register a handler for the AT link-dark event.
+ *
+ * Fires after CONFIG_NRFMODULE_AT_TIMEOUT_RECOVERY_THRESHOLD consecutive AT
+ * command timeouts, at most once per
+ * CONFIG_NRFMODULE_AT_TIMEOUT_RECOVERY_SPACING_S seconds. The library takes
+ * no recovery action itself unless CONFIG_NRFMODULE_AT_TIMEOUT_AUTO_RESET is
+ * enabled -- recovery policy is the product's.
+ *
+ * Replaces any previously registered handler. Safe to call at any time, but
+ * an invocation already in progress on another thread may still be observed
+ * running briefly after this returns.
+ *
+ * @param handler The link-dark event handler. Use @c NULL to unset.
+ *
+ * @retval 0 On success.
+ */
+int nrf_modem_at_link_dark_handler_set(nrf_modem_at_link_dark_handler_t handler);
 
 /**
  * @brief Send a formatted AT command to the modem.
