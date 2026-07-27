@@ -58,7 +58,9 @@ struct gnss_accuracy {
  * accuracy alongside the standard fix. Accuracy typically lags by one
  * epoch (GST arrives after GGA/RMC) — compare utc fields to detect this.
  *
- * Thread-safe: copies data under the driver's internal lock.
+ * Thread-safe: copies data under a dedicated spinlock, not the driver's
+ * command lock — non-blocking, safe to call from the GNSS data callback,
+ * and cannot deadlock against PM actions.
  *
  * @param dev      GNSS device.
  * @param accuracy Output struct filled on success.
