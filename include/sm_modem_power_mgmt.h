@@ -31,8 +31,8 @@ enum sm_modem_power_state {
 /**
  * @brief Initialize modem power management
  * 
- * This must be called after sm_at_client_init() and before sending
- * any AT commands through sm_modem_power_mgmt_send_at().
+ * This must be called after sm_at_client_init() and before any AT traffic
+ * goes out through the nrf_modem_at API.
  * 
  * @param inactivity_timeout Time before automatically sending AT#XSLEEP=2
  *                           Use K_NO_WAIT to disable auto-sleep
@@ -40,24 +40,6 @@ enum sm_modem_power_state {
  * @return 0 on success, negative errno on failure
  */
 int sm_modem_power_mgmt_init(k_timeout_t inactivity_timeout);
-
-/**
- * @brief Send AT command with automatic power management
- * 
- * This function:
- * 1. Wakes the modem if in IDLE state (handles AT#XSLEEP wake timing)
- * 2. Sends the AT command via sm_at_client
- * 3. Resets the inactivity timer
- * 
- * Use this instead of calling sm_at_client_send_cmd() directly when
- * power management is enabled.
- * 
- * @param cmd AT command string (without terminator)
- * @param timeout Command timeout in seconds (0 = wait forever)
- * 
- * @return AT command result (AT_CMD_OK, AT_CMD_ERROR, etc.) or negative errno
- */
-int sm_modem_power_mgmt_send_at(const char *cmd, uint32_t timeout);
 
 /**
  * @brief Ensure the modem is awake without sending a command.
@@ -74,25 +56,10 @@ int sm_modem_power_mgmt_ensure_awake(void);
  * @brief Notify the power manager that AT activity just occurred.
  *
  * Resets the inactivity timer so the modem is not put to sleep prematurely.
- * Call this after every successful AT command when bypassing send_at().
+ * Call this after every successful AT command sent outside the normal
+ * nrf_modem_at_*() path.
  */
 void sm_modem_power_mgmt_notify_activity(void);
-
-/**
- * @brief Open a modem transaction, blocking auto-sleep for its duration.
- *
- * Bracket any wake+send that bypasses send_at() between txn_begin()/txn_end()
- * so auto-sleep's AT#XSLEEP=2 (UART/DTR teardown) cannot race a send in flight.
- *
- * Re-entrant, but begin/end must run on the same thread, and every begin needs
- * a matching end (including on error paths).
- */
-void sm_modem_power_mgmt_txn_begin(void);
-
-/**
- * @brief Close a modem transaction opened with txn_begin().
- */
-void sm_modem_power_mgmt_txn_end(void);
 
 /**
  * @brief Pause automatic sleep (e.g. during LTE registration).
