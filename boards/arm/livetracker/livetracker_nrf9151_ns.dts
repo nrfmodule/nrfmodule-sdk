@@ -12,10 +12,13 @@
  * Hardware Connections:
  *   - UART TX (P0.10) -> nRF52840 P0.08 (RX)
  *   - UART RX (P0.11) <- nRF52840 P0.06 (TX)
- *   - UART RTS (P0.12) -> nRF52840 P1.03 (RTS)
- *   - UART CTS (P0.09) <- nRF52840 P1.06 (CTS)
+ *   - UART RTS (P0.09) -> nRF52840 P1.06 (CTS)
+ *   - UART CTS (P0.12) <- nRF52840 P1.03 (RTS)
  *   - DTR input (P0.31 - POWER) <- nRF52840 P0.28 (host wakes modem)
  *   - RI output (P0.30 - INDICATE) -> nRF52840 P0.30 (modem signals host)
+ *
+ * RTS/CTS are deliberately swapped vs the PCB net names: RTS must drive the
+ * 52840's CTS input and CTS must listen to the 52840's RTS output.
  */
 
 /dts-v1/;
@@ -49,6 +52,8 @@
 
 &gpio0 {
 	status = "okay";
+	/* PORT event on DTR (P0.31) so the host can wake the sleeping modem. */
+	sense-edge-mask = <0x80000000>;
 };
 
 /*
@@ -60,8 +65,8 @@
 &uart2 {
 	compatible = "nordic,nrf-uarte";
 	status = "okay";
-	current-speed = <115200>;
-	/* hw-flow-control; */  /* Uncomment to enable RTS/CTS - also update pinctrl */
+	current-speed = <921600>;
+	hw-flow-control;
 	pinctrl-0 = <&uart2_default>;
 	pinctrl-1 = <&uart2_sleep>;
 	pinctrl-names = "default", "sleep";
