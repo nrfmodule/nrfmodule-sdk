@@ -1,0 +1,12 @@
+# Copyright (c) 2026 nRFModule
+# SPDX-License-Identifier: Apache-2.0
+
+description: |
+  nRF91 modem GNSS exposed through the serial-modem AT bridge (AT#XGNSS,
+  nrfmodule-core driver gnss_nrf91_slm). Bus-less: the driver is a client of
+  the existing modem AT link and owns no peripheral; the node only anchors
+  the driver instance and the `gnss` nodelabel.
+
+compatible: "nrfmodule,gnss-nrf91-slm"
+
+include: base.yaml
