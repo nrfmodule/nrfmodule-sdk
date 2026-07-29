@@ -1,0 +1,14 @@
+# PigeonTracker board default configuration
+#
+# Copyright (c) 2026 nRFModule
+# SPDX-License-Identifier: Apache-2.0
+
+if BOARD_PIGEONTRACKER
+
+config BOARD
+	default "pigeontracker"
+
+config HW_STACK_PROTECTION
+	default ARCH_HAS_STACK_PROTECTION
+
+endif # BOARD_PIGEONTRACKER
