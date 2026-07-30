@@ -20,7 +20,7 @@ CONFIG_UART_ASYNC_API=y
 CONFIG_UART_0_ASYNC=y
 CONFIG_UART_0_INTERRUPT_DRIVEN=n
 
-# Enable USB for console/shell (new USB device stack) — pads only, no charger
+# Enable USB for console/shell (new USB device stack), test pads only
 CONFIG_USB_DEVICE_STACK_NEXT=y
 CONFIG_UART_USE_RUNTIME_CONFIGURE=y
 CONFIG_USBD_CDC_ACM_CLASS=y

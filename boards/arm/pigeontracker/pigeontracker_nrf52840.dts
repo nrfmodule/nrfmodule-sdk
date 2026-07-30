@@ -5,22 +5,23 @@
  * SPDX-License-Identifier: Apache-2.0
  *
  * LiveTracker-derived board: no L76 GPS module (GNSS comes from the nRF9151
- * modem's own receiver via the serial-modem AT bridge) and no USB charging
- * circuit (USB pads exposed only — CDC console kept for bench bring-up).
+ * modem's own receiver via the serial-modem AT bridge). USB is test pads
+ * only, no connector; CDC console kept for bench bring-up. An MCP73830
+ * charger hangs off the USB pads, charging strategy TBD.
  *
- * SCAFFOLD: real pin assignments pending — every pin below is a placeholder
- * copied from LiveTracker, marked TODO(pins). Update the pinctrl file and
- * the GPIO properties here when the PigeonTracker pinout lands.
+ * Pins verified against the nRF_tracker_pigeon v1.0 netlist (2026-07-30),
+ * identical to LiveTracker for every shared function.
  *
  * Hardware:
- *   - nRF52840 (U4)
+ *   - nRF52840 WLCSP (U3)
  *   - nRF9151 Cellular Modem + GNSS (M1) - via UART + DTR/RI
- *   - MX25R6435F 8MB QSPI Flash (U5)
- *   - LIS2DH12 Accelerometer (U8) - via I2C
- *   - BMP390 Barometer (U9) - via I2C
- *   - RGB LED (D4)
- *   - User Button (SW)
- *   - USB pads (console only, no charging)
+ *   - MX25R6435F 8MB QSPI Flash (U4)
+ *   - LIS2DH12 Accelerometer (U7) - via I2C
+ *   - BMP390 Barometer (U8) - via I2C
+ *   - MCP73830 Battery Charger (U2) - STAT on P1.08
+ *   - MFF2 eSIM on the nRF9151 SIM interface (hand-soldered)
+ *   - RGB LED (D2)
+ *   - User Button (SW1)
  *
  * Power Architecture:
  *   - VDD_nRF: Main MCU power (always on)
@@ -72,7 +73,6 @@
 	 */
 	dte_dtr: dte_dtr {
 		compatible = "nordic,dte-dtr";
-		/* TODO(pins): placeholder from livetracker, real pins pending */
 		dtr-gpios = <&gpio0 28 GPIO_ACTIVE_HIGH>;
 		ri-gpios = <&gpio0 30 GPIO_ACTIVE_HIGH>;
 	};
@@ -83,7 +83,6 @@
 	sensor_pwr: sensor_pwr {
 		compatible = "regulator-fixed";
 		regulator-name = "sensor_pwr";
-		/* TODO(pins): placeholder from livetracker, real pins pending */
 		enable-gpios = <&gpio1 4 GPIO_ACTIVE_HIGH>;
 		regulator-boot-on;
 		/* startup-delay-us is applied only at boot init; off-on-delay-us is
@@ -96,13 +95,27 @@
 	power_latch: power_latch {
 		compatible = "regulator-fixed";
 		regulator-name = "power-latch";
-		/* TODO(pins): placeholder from livetracker, real pins pending */
 		enable-gpios = <&gpio0 14 GPIO_ACTIVE_HIGH>;
 		regulator-boot-on;
 	};
 
+	/* nRF9151 nRESET via Q2 inverter: active (high) holds the modem in
+	 * reset; 1M gate pull-down keeps it released when undriven. */
+	modem_control {
+		compatible = "gpio-leds";
+		n91_rst: n91_rst {
+			gpios = <&gpio1 2 GPIO_ACTIVE_HIGH>;
+			label = "nRF9151 reset";
+		};
+	};
+
+	/* MCP73830 STAT: low while charging, Hi-Z otherwise, no external pull */
+	zephyr,user {
+		chg-stat-gpios = <&gpio1 8 (GPIO_PULL_UP | GPIO_ACTIVE_LOW)>;
+	};
+
 	/*
-	 * RGB LED (D4 - Common Anode, active low) on PWM0 so the status indicator
+	 * RGB LED (D2 - Common Anode, active low) on PWM0 so the status indicator
 	 * can fade/mix colours. PWM_POLARITY_INVERTED -> brightness 100% = full on.
 	 */
 	rgb_pwm: pwmleds {
@@ -128,7 +141,6 @@
 	buttons: buttons {
 		compatible = "gpio-keys";
 		button0: button_0 {
-			/* TODO(pins): placeholder from livetracker, real pins pending */
 			gpios = <&gpio1 9 (GPIO_ACTIVE_LOW)>;
 			label = "User Button";
 			zephyr,code = <INPUT_KEY_0>;
@@ -142,7 +154,6 @@
 	 */
 	battery_adc: battery_adc {
 		compatible = "voltage-divider";
-		/* TODO(pins): placeholder from livetracker (AIN3), real pins pending */
 		io-channels = <&adc 3>;
 		output-ohms = <1000000>;  /* 1M bottom resistor */
 		full-ohms = <2000000>;    /* 2M total */
@@ -180,7 +191,7 @@
 	status = "okay";
 };
 
-/* RGB status LED (D4) — drives rgb_pwm via three PWM0 channels */
+/* RGB status LED (D2), drives rgb_pwm via three PWM0 channels */
 &pwm0 {
 	status = "okay";
 	pinctrl-0 = <&pwm0_rgb_default>;
@@ -219,7 +230,6 @@
 	lis2dh12: lis2dh12@18 {
 		compatible = "st,lis2dh12", "st,lis2dh";
 		reg = <0x18>;
-		/* TODO(pins): placeholder from livetracker, real pins pending */
 		irq-gpios = <&gpio1 1 GPIO_ACTIVE_HIGH>;
 	};
 
@@ -274,7 +284,6 @@
 	#size-cells = <0>;
 
 	channel@3 {
-		/* TODO(pins): placeholder from livetracker (AIN3), real pins pending */
 		reg = <3>;
 		zephyr,gain = "ADC_GAIN_1_6";
 		zephyr,reference = "ADC_REF_INTERNAL";
@@ -285,7 +294,7 @@
 };
 
 /* USB - new USBD stack (CONFIG_USB_DEVICE_STACK_NEXT).
- * Console/bring-up only: the PigeonTracker exposes USB pads, no charger.
+ * Console/bring-up only: USB is exposed on test pads, no connector.
  */
 zephyr_udc0: &usbd {
 	compatible = "nordic,nrf-usbd";
