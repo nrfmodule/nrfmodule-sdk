@@ -35,6 +35,12 @@ if BOARD_PIGEONTRACKER_NRF9151_NS
 config MODEM_ANTENNA
 	default y
 
+# The LNA sits on COEX0 no matter which antenna choice the app picks; the
+# GNSS_EXTERNAL choice would otherwise default this to a bare AT%XCOEX0
+# (LNA off) with no build error.
+config MODEM_ANTENNA_AT_COEX0
+	default "AT\%XCOEX0=1,1,1565,1586"
+
 endif # BOARD_PIGEONTRACKER_NRF9151_NS
 
 endif # BOARD_PIGEONTRACKER
