@@ -23,6 +23,13 @@ config HW_STACK_PROTECTION
 config BOARD_PIGEONTRACKER
 	select USE_DT_CODE_PARTITION if BOARD_PIGEONTRACKER_NRF9151_NS
 
+# GNSS LNA (SKY65943) VEN is wired to the 9151's COEX0; modem_antenna's
+# onboard-GNSS default sends AT%XCOEX0=1,1,1565,1586 at every modem init.
+# Without it the LNA never powers and GNSS is near-deaf. Only takes effect
+# in modem-lib apps (the serial-modem firmware).
+config MODEM_ANTENNA
+	default y
+
 endif # BOARD_PIGEONTRACKER_NRF9151 || BOARD_PIGEONTRACKER_NRF9151_NS
 
 endif # BOARD_PIGEONTRACKER
