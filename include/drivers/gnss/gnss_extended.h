@@ -7,12 +7,13 @@
  * @file gnss_extended.h
  * @brief Extended GNSS data beyond Zephyr's standard gnss_data.
  *
- * Provides accuracy fields parsed from GST sentences. Call
+ * Provides position-accuracy fields alongside the standard fix. Call
  * gnss_extended_get_accuracy() from your GNSS_DATA_CALLBACK_DEFINE
  * handler to get position error alongside the standard fix.
  *
- * This API is generic and not tied to any specific GNSS module. Any
- * driver that parses GST (or equivalent) can populate the data.
+ * This API is generic and not tied to any specific GNSS module. The
+ * accuracy source is backend-specific (e.g. NMEA GST sentences, or the
+ * fix report of a modem-hosted receiver).
  */
 
 #ifndef NRFMODULE_DRIVERS_GNSS_EXTENDED_H_
@@ -27,7 +28,7 @@ extern "C" {
 #endif
 
 /**
- * @brief GNSS accuracy data from GST sentence.
+ * @brief GNSS accuracy data for the latest fix (source is backend-specific).
  */
 struct gnss_accuracy {
 	/** Horizontal accuracy in millimeters (sqrt(lat_sigma^2 + lon_sigma^2)). */
@@ -55,8 +56,9 @@ struct gnss_accuracy {
  * @brief Get the latest GNSS accuracy data.
  *
  * Call this from your GNSS_DATA_CALLBACK_DEFINE handler to get position
- * accuracy alongside the standard fix. Accuracy typically lags by one
- * epoch (GST arrives after GGA/RMC) — compare utc fields to detect this.
+ * accuracy alongside the standard fix. Depending on the backend the
+ * accuracy may lag the fix by one epoch - compare utc fields to detect
+ * this (NMEA backends: GST arrives after GGA/RMC).
  *
  * Thread-safe: copies data under a dedicated spinlock, not the driver's
  * command lock — non-blocking, safe to call from the GNSS data callback,
@@ -76,14 +78,15 @@ int gnss_extended_get_accuracy(const struct device *dev,
  * @brief GNSS power mode.
  */
 enum gnss_power_mode {
-	/** Full power — continuous tracking, highest current (~25mA). */
+	/** Full power - continuous tracking, highest current. */
 	GNSS_POWER_MODE_FULL = 0,
 
-	/** AlwaysLocate — module autonomously manages sleep/wake (~3-7mA avg).
-	 *  Best for continuous tracking with power savings. */
+	/** Low power - the receiver autonomously manages sleep/wake.
+	 *  Best for continuous tracking with power savings. (Value matches
+	 *  the PMTK AlwaysLocate mode of the first backend; kept for ABI.) */
 	GNSS_POWER_MODE_LOW = 9,
 
-	/** Periodic — run for a fixed time, sleep for a fixed time.
+	/** Periodic - run for a fixed time, sleep for a fixed time.
 	 *  Requires run_ms and sleep_ms parameters. */
 	GNSS_POWER_MODE_PERIODIC = 1,
 };
@@ -91,12 +94,14 @@ enum gnss_power_mode {
 /**
  * @brief Set the GNSS module power mode.
  *
- * Controls the module's internal sleep/wake cycling. For PERIODIC mode,
+ * Controls the receiver's internal sleep/wake cycling. For PERIODIC mode,
  * provide run and sleep durations. For FULL and LOW modes, run_ms and
  * sleep_ms are ignored.
  *
- * NOTE: The driver must release the FORCE_ON pin for low-power modes
- * to take effect. FORCE_ON is re-asserted when returning to FULL mode.
+ * May block while the backend talks to the receiver (e.g. an AT round-trip
+ * on a modem-hosted receiver, up to the AT command timeout); call from
+ * thread context only. Backends with a FORCE_ON pin release it for
+ * low-power modes and re-assert it when returning to FULL.
  *
  * @param dev      GNSS device.
  * @param mode     Power mode to set.

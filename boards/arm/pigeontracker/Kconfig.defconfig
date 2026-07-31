@@ -1,0 +1,46 @@
+# PigeonTracker board default configuration
+#
+# Copyright (c) 2026 nRFModule
+# SPDX-License-Identifier: Apache-2.0
+
+if BOARD_PIGEONTRACKER
+
+config BOARD
+	default "pigeontracker"
+
+if BOARD_PIGEONTRACKER_NRF52840
+
+config HW_STACK_PROTECTION
+	default ARCH_HAS_STACK_PROTECTION
+
+endif # BOARD_PIGEONTRACKER_NRF52840
+
+if BOARD_PIGEONTRACKER_NRF9151 || BOARD_PIGEONTRACKER_NRF9151_NS
+
+config HW_STACK_PROTECTION
+	default ARCH_HAS_STACK_PROTECTION
+
+config BOARD_PIGEONTRACKER
+	select USE_DT_CODE_PARTITION if BOARD_PIGEONTRACKER_NRF9151_NS
+
+endif # BOARD_PIGEONTRACKER_NRF9151 || BOARD_PIGEONTRACKER_NRF9151_NS
+
+if BOARD_PIGEONTRACKER_NRF9151_NS
+
+# GNSS LNA (SKY65943) VEN is wired to the 9151's COEX0; modem_antenna's
+# onboard-GNSS default sends AT%XCOEX0=1,1,1565,1586 at every modem init.
+# Without it the LNA never powers and GNSS is near-deaf. NS only, like the
+# Nordic DK defaults: the secure variant hosts MCUboot, which resolves the
+# symbol but cannot compile the lib (no modem headers).
+config MODEM_ANTENNA
+	default y
+
+# The LNA sits on COEX0 no matter which antenna choice the app picks; the
+# GNSS_EXTERNAL choice would otherwise default this to a bare AT%XCOEX0
+# (LNA off) with no build error.
+config MODEM_ANTENNA_AT_COEX0
+	default "AT\%XCOEX0=1,1,1565,1586"
+
+endif # BOARD_PIGEONTRACKER_NRF9151_NS
+
+endif # BOARD_PIGEONTRACKER
