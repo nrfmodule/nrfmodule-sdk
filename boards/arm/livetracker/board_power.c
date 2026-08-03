@@ -4,7 +4,9 @@
  * - Sensor power rail managed via regulator-fixed DTS node (sensor_pwr).
  *   Sensors are powered on at boot (regulator-boot-on) so I2C drivers
  *   can probe successfully. App turns sensors off when not needed.
- * - USB VBUS detection: disable USBD when unplugged to save ~1mA
+ * - USB VBUS detection: disable USBD when unplugged to save ~1mA. Raw VBUS
+ *   edges are debounced (2 s stable) and published as one shared signal,
+ *   see nrfmodule_usb_vbus.h.
  *
  * Only compiled for the application (CONFIG_GPIO), not MCUboot.
  *
@@ -25,6 +27,8 @@
 #include <zephyr/usb/usbd_msg.h>
 #include <zephyr/logging/log.h>
 #include <hal/nrf_power.h>
+#include <nrfmodule_usb_vbus.h>
+#include <nrfmodule_vbus_debounce.h>
 
 LOG_MODULE_REGISTER(board);
 
@@ -82,6 +86,8 @@ static void shell_log_backend_set_active(bool active)
 static struct usbd_context *usb_ctx;
 static struct k_work usb_enable_work;
 static struct k_work usb_disable_work;
+static struct k_work_delayable vbus_work;
+static struct vbus_debounce vbus_db;
 
 static void usb_disable_work_fn(struct k_work *work)
 {
@@ -126,15 +132,47 @@ static void usb_enable_work_fn(struct k_work *work)
 #endif
 }
 
+/* All debounce state lives in this work item (system workqueue), so the raw
+ * level is sampled here instead of being passed in from the USBD callback.
+ * The USBD gate and the public signal follow the same debounced edges.
+ */
+static void vbus_work_fn(struct k_work *work)
+{
+	ARG_UNUSED(work);
+
+	const int64_t now_ms = k_uptime_get();
+	const bool raw_level = nrf_power_usbregstatus_vbusdet_get(NRF_POWER);
+	const enum vbus_debounce_event evt =
+		vbus_debounce_feed(&vbus_db, raw_level, now_ms);
+
+	switch (evt) {
+	case VBUS_DEBOUNCE_EVENT_RISE:
+		(void)k_work_submit(&usb_enable_work);
+		nrfmodule_usb_vbus_publish(true, true);
+		break;
+	case VBUS_DEBOUNCE_EVENT_FALL:
+		(void)k_work_submit(&usb_disable_work);
+		nrfmodule_usb_vbus_publish(false, true);
+		break;
+	default:
+		break;
+	}
+
+	int64_t delay_ms;
+
+	if (vbus_debounce_next_timeout(&vbus_db, now_ms, &delay_ms)) {
+		(void)k_work_reschedule(&vbus_work, K_MSEC(delay_ms));
+	}
+}
+
 static void usbd_msg_cb(struct usbd_context *const ctx,
 			const struct usbd_msg *const msg)
 {
 	switch (msg->type) {
 	case USBD_MSG_VBUS_REMOVED:
-		k_work_submit(&usb_disable_work);
-		break;
 	case USBD_MSG_VBUS_READY:
-		k_work_submit(&usb_enable_work);
+		/* An edge only means "resample": the work item decides. */
+		(void)k_work_reschedule(&vbus_work, K_NO_WAIT);
 		break;
 	default:
 		break;
@@ -155,23 +193,26 @@ static int board_usb_power_init(void)
 
 	k_work_init(&usb_enable_work, usb_enable_work_fn);
 	k_work_init(&usb_disable_work, usb_disable_work_fn);
+	k_work_init_delayable(&vbus_work, vbus_work_fn);
 
-	int err = usbd_msg_register_cb(usb_ctx, usbd_msg_cb);
+	/* VBUS edges are seen only as transitions; seed the debouncer with the
+	 * level at boot. cdc_acm_serial enables USBD at boot (ENABLE_AT_BOOT=y),
+	 * so with no cable there is no VBUS-removed edge - gate it off here to
+	 * drop the HFXO request and deactivate the shell log backend over the
+	 * dead CDC. Boot-while-plugged has no edge either, hence the level
+	 * publish: consumers read it with nrfmodule_usb_vbus_is_present().
+	 */
+	const bool vbus_at_boot = nrf_power_usbregstatus_vbusdet_get(NRF_POWER);
+
+	vbus_debounce_init(&vbus_db, vbus_at_boot);
+	nrfmodule_usb_vbus_publish(vbus_at_boot, false);
+	(void)k_work_submit(vbus_at_boot ? &usb_enable_work : &usb_disable_work);
+
+	const int err = usbd_msg_register_cb(usb_ctx, usbd_msg_cb);
 
 	if (err) {
 		LOG_ERR("Failed to register USBD message callback: %d", err);
 		return err;
-	}
-
-	/* VBUS edges are seen only as transitions; seed the current level at boot.
-	 * cdc_acm_serial enables USBD at boot (ENABLE_AT_BOOT=y), so with no cable
-	 * there is no VBUS-removed edge - gate it off here to drop the HFXO request
-	 * and deactivate the shell log backend over the dead CDC.
-	 */
-	if (nrf_power_usbregstatus_vbusdet_get(NRF_POWER)) {
-		k_work_submit(&usb_enable_work);
-	} else {
-		k_work_submit(&usb_disable_work);
 	}
 
 	LOG_INF("Board USB power management initialized");
