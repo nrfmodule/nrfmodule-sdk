@@ -58,6 +58,22 @@ int nrfmodule_usb_vbus_set_callback(nrfmodule_usb_vbus_cb_t cb, void *user_data)
 bool nrfmodule_usb_vbus_is_present(void);
 
 /**
+ * @brief Ask the board to enable USBD now.
+ *
+ * Only meaningful with CONFIG_NRFMODULE_USB_VBUS_APP_OWNED_ENABLE=y, where the
+ * board publishes the debounced rise but leaves USBD off so the application can
+ * finish preparing (for example refreshing the mass-storage FAT image) before
+ * the host sees the device. Without that option USBD is already on and the call
+ * is a harmless no-op in effect.
+ *
+ * Callable from any thread. The enable itself runs in the board work item.
+ *
+ * @retval 0 when the enable was queued
+ * @retval -ENODEV if the board found no USBD context
+ */
+int nrfmodule_usb_vbus_enable_request(void);
+
+/**
  * @brief Publish a debounced level. Board layer only.
  *
  * Called by board_power.c from its VBUS work item. Applications consume the

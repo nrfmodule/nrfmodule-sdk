@@ -147,7 +147,10 @@ static void vbus_work_fn(struct k_work *work)
 
 	switch (evt) {
 	case VBUS_DEBOUNCE_EVENT_RISE:
-		(void)k_work_submit(&usb_enable_work);
+		/* App-owned mode: publish only, the app enables when it is ready. */
+		if (!IS_ENABLED(CONFIG_NRFMODULE_USB_VBUS_APP_OWNED_ENABLE)) {
+			(void)k_work_submit(&usb_enable_work);
+		}
 		nrfmodule_usb_vbus_publish(true, true);
 		break;
 	case VBUS_DEBOUNCE_EVENT_FALL:
@@ -163,6 +166,17 @@ static void vbus_work_fn(struct k_work *work)
 	if (vbus_debounce_next_timeout(&vbus_db, now_ms, &delay_ms)) {
 		(void)k_work_reschedule(&vbus_work, K_MSEC(delay_ms));
 	}
+}
+
+int nrfmodule_usb_vbus_enable_request(void)
+{
+	if (usb_ctx == NULL) {
+		return -ENODEV;
+	}
+
+	(void)k_work_submit(&usb_enable_work);
+
+	return 0;
 }
 
 static void usbd_msg_cb(struct usbd_context *const ctx,
@@ -201,12 +215,18 @@ static int board_usb_power_init(void)
 	 * drop the HFXO request and deactivate the shell log backend over the
 	 * dead CDC. Boot-while-plugged has no edge either, hence the level
 	 * publish: consumers read it with nrfmodule_usb_vbus_is_present().
+	 * In app-owned mode the boot enable is the app's call as well.
 	 */
 	const bool vbus_at_boot = nrf_power_usbregstatus_vbusdet_get(NRF_POWER);
 
 	vbus_debounce_init(&vbus_db, vbus_at_boot);
 	nrfmodule_usb_vbus_publish(vbus_at_boot, false);
-	(void)k_work_submit(vbus_at_boot ? &usb_enable_work : &usb_disable_work);
+
+	if (!vbus_at_boot) {
+		(void)k_work_submit(&usb_disable_work);
+	} else if (!IS_ENABLED(CONFIG_NRFMODULE_USB_VBUS_APP_OWNED_ENABLE)) {
+		(void)k_work_submit(&usb_enable_work);
+	}
 
 	const int err = usbd_msg_register_cb(usb_ctx, usbd_msg_cb);
 
