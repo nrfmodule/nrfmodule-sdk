@@ -21,7 +21,8 @@
  * USB VBUS power management - disable USBD when cable is removed
  * ======================================================================== */
 
-#if defined(CONFIG_USB_DEVICE_STACK_NEXT)
+/* The gate runs on the shared debounced VBUS signal, so it needs both. */
+#if defined(CONFIG_USB_DEVICE_STACK_NEXT) && defined(CONFIG_NRFMODULE_USB_VBUS)
 
 #include <zephyr/usb/usbd.h>
 #include <zephyr/usb/usbd_msg.h>
@@ -29,6 +30,7 @@
 #include <hal/nrf_power.h>
 #include <nrfmodule_usb_vbus.h>
 #include <nrfmodule_vbus_debounce.h>
+#include <usb_vbus_internal.h>
 
 LOG_MODULE_REGISTER(board);
 
@@ -87,7 +89,7 @@ static struct usbd_context *usb_ctx;
 static struct k_work usb_enable_work;
 static struct k_work usb_disable_work;
 static struct k_work_delayable vbus_work;
-static struct vbus_debounce vbus_db;
+static struct nrfmodule_vbus_debounce vbus_db;
 
 static void usb_disable_work_fn(struct k_work *work)
 {
@@ -117,6 +119,15 @@ static void usb_enable_work_fn(struct k_work *work)
 		return;
 	}
 
+	/* The cable can go while an app-owned enable request is queued. Enabling
+	 * on a dead bus costs ~1mA and would re-arm the shell log mirror over a
+	 * CDC that cannot drain.
+	 */
+	if (!nrfmodule_usb_vbus_is_present()) {
+		LOG_DBG("Enable skipped - VBUS gone");
+		return;
+	}
+
 	int err = usbd_enable(usb_ctx);
 
 	if (err && err != -EALREADY) {
@@ -142,20 +153,21 @@ static void vbus_work_fn(struct k_work *work)
 
 	const int64_t now_ms = k_uptime_get();
 	const bool raw_level = nrf_power_usbregstatus_vbusdet_get(NRF_POWER);
-	const enum vbus_debounce_event evt =
-		vbus_debounce_feed(&vbus_db, raw_level, now_ms);
+	const enum nrfmodule_vbus_debounce_event evt =
+		nrfmodule_vbus_debounce_feed(&vbus_db, raw_level, now_ms);
 
+	/* Publish before submitting so the enable work sees the new level. */
 	switch (evt) {
-	case VBUS_DEBOUNCE_EVENT_RISE:
+	case NRFMODULE_VBUS_DEBOUNCE_EVENT_RISE:
+		nrfmodule_usb_vbus_publish(true, true);
 		/* App-owned mode: publish only, the app enables when it is ready. */
 		if (!IS_ENABLED(CONFIG_NRFMODULE_USB_VBUS_APP_OWNED_ENABLE)) {
 			(void)k_work_submit(&usb_enable_work);
 		}
-		nrfmodule_usb_vbus_publish(true, true);
 		break;
-	case VBUS_DEBOUNCE_EVENT_FALL:
-		(void)k_work_submit(&usb_disable_work);
+	case NRFMODULE_VBUS_DEBOUNCE_EVENT_FALL:
 		nrfmodule_usb_vbus_publish(false, true);
+		(void)k_work_submit(&usb_disable_work);
 		break;
 	default:
 		break;
@@ -163,8 +175,15 @@ static void vbus_work_fn(struct k_work *work)
 
 	int64_t delay_ms;
 
-	if (vbus_debounce_next_timeout(&vbus_db, now_ms, &delay_ms)) {
+	if (nrfmodule_vbus_debounce_next_timeout(&vbus_db, now_ms, &delay_ms)) {
 		(void)k_work_reschedule(&vbus_work, K_MSEC(delay_ms));
+	} else if (evt != NRFMODULE_VBUS_DEBOUNCE_EVENT_NONE) {
+		/* Self-heal: usbd_msg_pub drops messages when its slab runs out
+		 * during a hard bounce, which would leave the filter idle on a
+		 * stale level. One confirming resample costs nothing.
+		 */
+		(void)k_work_reschedule(
+			&vbus_work, K_MSEC(NRFMODULE_VBUS_DEBOUNCE_STABLE_MS));
 	}
 }
 
@@ -172,6 +191,10 @@ int nrfmodule_usb_vbus_enable_request(void)
 {
 	if (usb_ctx == NULL) {
 		return -ENODEV;
+	}
+
+	if (!nrfmodule_usb_vbus_is_present()) {
+		return -EAGAIN;
 	}
 
 	(void)k_work_submit(&usb_enable_work);
@@ -219,7 +242,7 @@ static int board_usb_power_init(void)
 	 */
 	const bool vbus_at_boot = nrf_power_usbregstatus_vbusdet_get(NRF_POWER);
 
-	vbus_debounce_init(&vbus_db, vbus_at_boot);
+	nrfmodule_vbus_debounce_init(&vbus_db, vbus_at_boot);
 	nrfmodule_usb_vbus_publish(vbus_at_boot, false);
 
 	if (!vbus_at_boot) {
@@ -235,10 +258,15 @@ static int board_usb_power_init(void)
 		return err;
 	}
 
+	/* A VBUS message between the seed above and the registration is lost, so
+	 * resample once now that messages are being delivered.
+	 */
+	(void)k_work_reschedule(&vbus_work, K_NO_WAIT);
+
 	LOG_INF("Board USB power management initialized");
 	return 0;
 }
 
 SYS_INIT(board_usb_power_init, APPLICATION, BOARD_USB_INIT_PRIORITY);
 
-#endif /* defined(CONFIG_USB_DEVICE_STACK_NEXT) */
+#endif /* CONFIG_USB_DEVICE_STACK_NEXT && CONFIG_NRFMODULE_USB_VBUS */

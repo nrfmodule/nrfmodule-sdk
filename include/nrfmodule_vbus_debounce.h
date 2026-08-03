@@ -23,20 +23,20 @@
 #include <stdint.h>
 
 /** Raw level must hold this long before the debounced level follows it. */
-#define VBUS_DEBOUNCE_STABLE_MS (2000)
+#define NRFMODULE_VBUS_DEBOUNCE_STABLE_MS (2000)
 
 /** Result of feeding a sample or running a tick. */
-enum vbus_debounce_event {
+enum nrfmodule_vbus_debounce_event {
 	/** Debounced level unchanged. */
-	VBUS_DEBOUNCE_EVENT_NONE = 0,
+	NRFMODULE_VBUS_DEBOUNCE_EVENT_NONE = 0,
 	/** Debounced level went low to high (cable attached). */
-	VBUS_DEBOUNCE_EVENT_RISE,
+	NRFMODULE_VBUS_DEBOUNCE_EVENT_RISE,
 	/** Debounced level went high to low (cable removed). */
-	VBUS_DEBOUNCE_EVENT_FALL,
+	NRFMODULE_VBUS_DEBOUNCE_EVENT_FALL,
 };
 
 /** Debounce state. Treat as opaque; use the accessors. */
-struct vbus_debounce {
+struct nrfmodule_vbus_debounce {
 	/** Level reported to consumers. */
 	bool level;
 	/** Most recent raw sample. */
@@ -51,12 +51,13 @@ struct vbus_debounce {
  * @brief Seed the filter with the level measured at boot.
  *
  * No event is produced for the seed: boot while plugged in has no edge, so
- * consumers must read the level with vbus_debounce_level().
+ * consumers must read the level with nrfmodule_vbus_debounce_level().
  *
  * @param db             State to initialise
  * @param initial_level  Raw VBUS level at boot
  */
-void vbus_debounce_init(struct vbus_debounce *db, bool initial_level);
+void nrfmodule_vbus_debounce_init(struct nrfmodule_vbus_debounce *db,
+				  bool initial_level);
 
 /**
  * @brief Feed a raw sample and evaluate the window.
@@ -70,21 +71,27 @@ void vbus_debounce_init(struct vbus_debounce *db, bool initial_level);
  *
  * @return Event produced by this sample.
  */
-enum vbus_debounce_event vbus_debounce_feed(struct vbus_debounce *db,
-					    bool raw_level, int64_t now_ms);
+enum nrfmodule_vbus_debounce_event
+nrfmodule_vbus_debounce_feed(struct nrfmodule_vbus_debounce *db, bool raw_level,
+			     int64_t now_ms);
 
 /**
  * @brief Evaluate the window without a new sample.
  *
- * Call when the deadline reported by vbus_debounce_next_timeout() expires.
+ * For callers that cannot resample when the deadline reported by
+ * nrfmodule_vbus_debounce_next_timeout() expires. A caller that does resample
+ * can use nrfmodule_vbus_debounce_feed() for both roles: an unchanged sample
+ * never restarts the window, so feeding it on the deadline settles the same
+ * way.
  *
  * @param db      State
  * @param now_ms  Current uptime in milliseconds
  *
  * @return Event produced by the elapsed time.
  */
-enum vbus_debounce_event vbus_debounce_tick(struct vbus_debounce *db,
-					    int64_t now_ms);
+enum nrfmodule_vbus_debounce_event
+nrfmodule_vbus_debounce_tick(struct nrfmodule_vbus_debounce *db,
+			     int64_t now_ms);
 
 /**
  * @brief Current debounced level.
@@ -93,7 +100,7 @@ enum vbus_debounce_event vbus_debounce_tick(struct vbus_debounce *db,
  *
  * @return true when VBUS is considered present.
  */
-bool vbus_debounce_level(const struct vbus_debounce *db);
+bool nrfmodule_vbus_debounce_level(const struct nrfmodule_vbus_debounce *db);
 
 /**
  * @brief Time until the next tick is due.
@@ -105,7 +112,8 @@ bool vbus_debounce_level(const struct vbus_debounce *db);
  *
  * @return true when a tick is pending, false when the filter is settled.
  */
-bool vbus_debounce_next_timeout(const struct vbus_debounce *db, int64_t now_ms,
-				int64_t *delay_ms);
+bool nrfmodule_vbus_debounce_next_timeout(
+	const struct nrfmodule_vbus_debounce *db, int64_t now_ms,
+	int64_t *delay_ms);
 
 #endif /* NRFMODULE_VBUS_DEBOUNCE_H_ */

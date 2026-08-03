@@ -7,9 +7,11 @@
  */
 
 #include <nrfmodule_usb_vbus.h>
+#include <usb_vbus_internal.h>
 
 #include <zephyr/kernel.h>
 #include <zephyr/sys/atomic.h>
+#include <zephyr/toolchain.h>
 #include <errno.h>
 
 static atomic_t vbus_present;
@@ -40,4 +42,12 @@ void nrfmodule_usb_vbus_publish(bool present, bool edge)
 	if (edge && vbus_cb != NULL) {
 		vbus_cb(present, vbus_cb_user_data);
 	}
+}
+
+/* Boards that gate USBD override this in their board_power.c. The default keeps
+ * the link resolved for boards that have no USB gate.
+ */
+__weak int nrfmodule_usb_vbus_enable_request(void)
+{
+	return -ENOTSUP;
 }

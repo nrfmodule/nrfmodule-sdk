@@ -37,7 +37,8 @@ typedef void (*nrfmodule_usb_vbus_cb_t)(bool present, void *user_data);
 /**
  * @brief Register the debounced VBUS edge callback.
  *
- * One slot. Pass NULL to clear it.
+ * One slot, single owner: one module per image registers, then keeps it. Pass
+ * NULL to clear it.
  *
  * @param cb         Callback, or NULL to unregister
  * @param user_data  Pointer handed back to the callback
@@ -63,26 +64,19 @@ bool nrfmodule_usb_vbus_is_present(void);
  * Only meaningful with CONFIG_NRFMODULE_USB_VBUS_APP_OWNED_ENABLE=y, where the
  * board publishes the debounced rise but leaves USBD off so the application can
  * finish preparing (for example refreshing the mass-storage FAT image) before
- * the host sees the device. Without that option USBD is already on and the call
- * is a harmless no-op in effect.
+ * the host sees the device. Without that option the board has already enabled
+ * USBD and the queued enable finds nothing to do.
+ *
+ * The enable is refused while VBUS is absent, so a cable pulled during the
+ * application's preparation cannot leave USBD powered on a dead bus.
  *
  * Callable from any thread. The enable itself runs in the board work item.
  *
  * @retval 0 when the enable was queued
+ * @retval -EAGAIN if VBUS is not present, so nothing was queued
  * @retval -ENODEV if the board found no USBD context
+ * @retval -ENOTSUP if the board does not implement a USB gate
  */
 int nrfmodule_usb_vbus_enable_request(void);
-
-/**
- * @brief Publish a debounced level. Board layer only.
- *
- * Called by board_power.c from its VBUS work item. Applications consume the
- * signal with the two functions above.
- *
- * @param present  Debounced level
- * @param edge     true when this is an edge (invoke the callback), false when
- *                 seeding the level at boot
- */
-void nrfmodule_usb_vbus_publish(bool present, bool edge);
 
 #endif /* NRFMODULE_USB_VBUS_H_ */
