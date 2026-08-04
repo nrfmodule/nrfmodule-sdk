@@ -8,6 +8,15 @@ zephyr_library_sources_ifdef(CONFIG_NRFMODULE_RGB_LED
     lib/led/rgb_led.c
 )
 
+# Debounced USB VBUS signal, shared by the board USBD gate and the application.
+zephyr_library_sources_ifdef(CONFIG_NRFMODULE_USB_VBUS
+    lib/power/vbus_debounce.c
+    lib/power/usb_vbus.c
+)
+if(CONFIG_NRFMODULE_USB_VBUS)
+    zephyr_include_directories(lib/power)
+endif()
+
 # Vendored BMP390 driver: stock bmp388 + a PM_DEVICE_ACTION_TURN_ON re-init, so
 # the chip survives its rail being power-gated (see drivers/sensor/bmp390).
 zephyr_library_sources_ifdef(CONFIG_NRFMODULE_BMP390
