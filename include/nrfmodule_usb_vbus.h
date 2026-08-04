@@ -38,7 +38,8 @@ typedef void (*nrfmodule_usb_vbus_cb_t)(bool present, void *user_data);
  * @brief Register the debounced VBUS edge callback.
  *
  * One slot, single owner: one module per image registers, then keeps it. Pass
- * NULL to clear it.
+ * NULL to clear it. Callable from any context; registration is atomic against
+ * a concurrent edge publish.
  *
  * @param cb         Callback, or NULL to unregister
  * @param user_data  Pointer handed back to the callback

@@ -3,7 +3,8 @@
 
 config NRFMODULE_USB_VBUS
 	bool "Shared debounced USB VBUS signal"
-	default y if USB_DEVICE_STACK_NEXT
+	depends on USB_DEVICE_STACK_NEXT
+	default y
 	help
 	  One debounced VBUS presence signal for the whole image: a pure
 	  debounce state machine (nrfmodule_vbus_debounce.h) plus the level

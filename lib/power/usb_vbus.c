@@ -15,17 +15,25 @@
 #include <errno.h>
 
 static atomic_t vbus_present;
+/* The lock keeps the cb/user_data pair coherent between a registering thread
+ * and a publish on the system workqueue.
+ */
+static struct k_spinlock vbus_cb_lock;
 static nrfmodule_usb_vbus_cb_t vbus_cb;
 static void *vbus_cb_user_data;
 
 int nrfmodule_usb_vbus_set_callback(nrfmodule_usb_vbus_cb_t cb, void *user_data)
 {
+	const k_spinlock_key_t key = k_spin_lock(&vbus_cb_lock);
+
 	if (cb != NULL && vbus_cb != NULL && vbus_cb != cb) {
+		k_spin_unlock(&vbus_cb_lock, key);
 		return -EALREADY;
 	}
 
 	vbus_cb_user_data = user_data;
 	vbus_cb = cb;
+	k_spin_unlock(&vbus_cb_lock, key);
 
 	return 0;
 }
@@ -39,8 +47,18 @@ void nrfmodule_usb_vbus_publish(bool present, bool edge)
 {
 	(void)atomic_set(&vbus_present, present ? 1 : 0);
 
-	if (edge && vbus_cb != NULL) {
-		vbus_cb(present, vbus_cb_user_data);
+	if (!edge) {
+		return;
+	}
+
+	const k_spinlock_key_t key = k_spin_lock(&vbus_cb_lock);
+	const nrfmodule_usb_vbus_cb_t cb = vbus_cb;
+	void *const user_data = vbus_cb_user_data;
+
+	k_spin_unlock(&vbus_cb_lock, key);
+
+	if (cb != NULL) {
+		cb(present, user_data);
 	}
 }
 

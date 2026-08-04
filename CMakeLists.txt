@@ -13,8 +13,10 @@ zephyr_library_sources_ifdef(CONFIG_NRFMODULE_USB_VBUS
     lib/power/vbus_debounce.c
     lib/power/usb_vbus.c
 )
+# usb_vbus_internal.h is producer-only: visible to this library and the board
+# libraries (see boards/arm/*/CMakeLists.txt), not on the global include path.
 if(CONFIG_NRFMODULE_USB_VBUS)
-    zephyr_include_directories(lib/power)
+    zephyr_library_include_directories(lib/power)
 endif()
 
 # Vendored BMP390 driver: stock bmp388 + a PM_DEVICE_ACTION_TURN_ON re-init, so

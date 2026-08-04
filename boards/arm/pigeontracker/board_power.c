@@ -85,11 +85,18 @@ static void shell_log_backend_set_active(bool active)
  */
 #define BOARD_USB_INIT_PRIORITY 90 /* style:no-paren — SYS_INIT pastes the priority, brackets break the build */
 
+/* Delay before the one confirming resample that follows any VBUS activity. */
+#define VBUS_CONFIRM_RESAMPLE_MS (NRFMODULE_VBUS_DEBOUNCE_STABLE_MS)
+
 static struct usbd_context *usb_ctx;
 static struct k_work usb_enable_work;
 static struct k_work usb_disable_work;
 static struct k_work_delayable vbus_work;
 static struct nrfmodule_vbus_debounce vbus_db;
+/* Set by external triggers (USBD message, boot resample); the work item
+ * consumes it to owe one confirming resample after the filter settles.
+ */
+static atomic_t vbus_confirm_owed;
 
 static void usb_disable_work_fn(struct k_work *work)
 {
@@ -177,13 +184,17 @@ static void vbus_work_fn(struct k_work *work)
 
 	if (nrfmodule_vbus_debounce_next_timeout(&vbus_db, now_ms, &delay_ms)) {
 		(void)k_work_reschedule(&vbus_work, K_MSEC(delay_ms));
-	} else if (evt != NRFMODULE_VBUS_DEBOUNCE_EVENT_NONE) {
-		/* Self-heal: usbd_msg_pub drops messages when its slab runs out
-		 * during a hard bounce, which would leave the filter idle on a
-		 * stale level. One confirming resample costs nothing.
+	} else if (evt != NRFMODULE_VBUS_DEBOUNCE_EVENT_NONE ||
+		   atomic_cas(&vbus_confirm_owed, 1, 0)) {
+		/* Self-heal: usbd messages are lossy under a hard bounce (msgq
+		 * and slab both drop on K_NO_WAIT), which can leave the filter
+		 * idle on a stale level. Every run triggered by a message or an
+		 * edge therefore ends in one confirming resample; only a
+		 * confirming run that finds nothing goes idle without one.
 		 */
-		(void)k_work_reschedule(
-			&vbus_work, K_MSEC(NRFMODULE_VBUS_DEBOUNCE_STABLE_MS));
+		(void)atomic_set(&vbus_confirm_owed, 0);
+		(void)k_work_reschedule(&vbus_work,
+					K_MSEC(VBUS_CONFIRM_RESAMPLE_MS));
 	}
 }
 
@@ -205,10 +216,13 @@ int nrfmodule_usb_vbus_enable_request(void)
 static void usbd_msg_cb(struct usbd_context *const ctx,
 			const struct usbd_msg *const msg)
 {
+	ARG_UNUSED(ctx);
+
 	switch (msg->type) {
 	case USBD_MSG_VBUS_REMOVED:
 	case USBD_MSG_VBUS_READY:
 		/* An edge only means "resample": the work item decides. */
+		(void)atomic_set(&vbus_confirm_owed, 1);
 		(void)k_work_reschedule(&vbus_work, K_NO_WAIT);
 		break;
 	default:
@@ -238,16 +252,18 @@ static int board_usb_power_init(void)
 	 * drop the HFXO request and deactivate the shell log backend over the
 	 * dead CDC. Boot-while-plugged has no edge either, hence the level
 	 * publish: consumers read it with nrfmodule_usb_vbus_is_present().
-	 * In app-owned mode the boot enable is the app's call as well.
+	 * In app-owned mode boot-while-plugged is gated off too: the boot
+	 * enable is undone so nothing faces the host until the app asks.
 	 */
 	const bool vbus_at_boot = nrf_power_usbregstatus_vbusdet_get(NRF_POWER);
 
 	nrfmodule_vbus_debounce_init(&vbus_db, vbus_at_boot);
 	nrfmodule_usb_vbus_publish(vbus_at_boot, false);
 
-	if (!vbus_at_boot) {
+	if (!vbus_at_boot ||
+	    IS_ENABLED(CONFIG_NRFMODULE_USB_VBUS_APP_OWNED_ENABLE)) {
 		(void)k_work_submit(&usb_disable_work);
-	} else if (!IS_ENABLED(CONFIG_NRFMODULE_USB_VBUS_APP_OWNED_ENABLE)) {
+	} else {
 		(void)k_work_submit(&usb_enable_work);
 	}
 
@@ -261,6 +277,7 @@ static int board_usb_power_init(void)
 	/* A VBUS message between the seed above and the registration is lost, so
 	 * resample once now that messages are being delivered.
 	 */
+	(void)atomic_set(&vbus_confirm_owed, 1);
 	(void)k_work_reschedule(&vbus_work, K_NO_WAIT);
 
 	LOG_INF("Board USB power management initialized");
