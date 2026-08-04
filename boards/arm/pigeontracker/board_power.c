@@ -186,11 +186,8 @@ static void vbus_work_fn(struct k_work *work)
 		(void)k_work_reschedule(&vbus_work, K_MSEC(delay_ms));
 	} else if (evt != NRFMODULE_VBUS_DEBOUNCE_EVENT_NONE ||
 		   atomic_cas(&vbus_confirm_owed, 1, 0)) {
-		/* Self-heal: usbd messages are lossy under a hard bounce (msgq
-		 * and slab both drop on K_NO_WAIT), which can leave the filter
-		 * idle on a stale level. Every run triggered by a message or an
-		 * edge therefore ends in one confirming resample; only a
-		 * confirming run that finds nothing goes idle without one.
+		/* usbd messages drop under load; end every externally
+		 * triggered run with one confirming resample.
 		 */
 		(void)atomic_set(&vbus_confirm_owed, 0);
 		(void)k_work_reschedule(&vbus_work,
@@ -246,14 +243,9 @@ static int board_usb_power_init(void)
 	k_work_init(&usb_disable_work, usb_disable_work_fn);
 	k_work_init_delayable(&vbus_work, vbus_work_fn);
 
-	/* VBUS edges are seen only as transitions; seed the debouncer with the
-	 * level at boot. cdc_acm_serial enables USBD at boot (ENABLE_AT_BOOT=y),
-	 * so with no cable there is no VBUS-removed edge - gate it off here to
-	 * drop the HFXO request and deactivate the shell log backend over the
-	 * dead CDC. Boot-while-plugged has no edge either, hence the level
-	 * publish: consumers read it with nrfmodule_usb_vbus_is_present().
-	 * In app-owned mode boot-while-plugged is gated off too: the boot
-	 * enable is undone so nothing faces the host until the app asks.
+	/* Boot produces no edge: seed the debouncer, publish the level.
+	 * cdc_acm_serial already enabled USBD at boot; gate it off unless a
+	 * cable is in and enable is not app-owned.
 	 */
 	const bool vbus_at_boot = nrf_power_usbregstatus_vbusdet_get(NRF_POWER);
 
