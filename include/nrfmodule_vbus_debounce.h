@@ -11,9 +11,11 @@
  * @file
  * @brief Pure USB VBUS debounce state machine.
  *
- * Raw VBUS edges bounce hard on hand plug-in: a single connect can produce
- * dozens of level changes. This filter reports a level change only after the
- * raw level has held steady for the stability window.
+ * A VBUS edge triggers expensive work downstream (FAT export before the host
+ * may see the disk; dock state transitions that cycle the modem), so a
+ * wiggled cable or a scraping dock contact must not thrash those consumers.
+ * This filter reports a level change only after the raw level has held
+ * steady for the stability window.
  *
  * Pure: no kernel, timer or GPIO calls. Time is injected by the caller, so the
  * state machine is testable off-target. The owner supplies the storage.
