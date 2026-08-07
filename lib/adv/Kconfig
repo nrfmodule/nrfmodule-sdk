@@ -1,0 +1,13 @@
+# Copyright (c) 2026 nRFModule
+# SPDX-License-Identifier: Apache-2.0
+
+config NRFMODULE_ADV_CODEC
+	bool "nRFModule BLE advertising wire-format codec"
+	help
+	  Pure encode/decode for the company-0x0E34 BLE advertising layouts
+	  (nRFModule tracker v2 status broadcast, BeeScales hive-scale scan
+	  response) plus the Ingics iBS05 temperature beacon (company 0x082C).
+	  A single classify/decode entry point disambiguates the two 0x0E34
+	  layouts from each other. No Bluetooth stack dependency: any product
+	  that needs to read or write these payloads can enable it, including
+	  a future BLE hub that scans mixed advertisers.
