@@ -89,9 +89,7 @@
 			psels = <NRF_PSEL(PWM_OUT0, 1, 11)>,
 				<NRF_PSEL(PWM_OUT1, 1, 13)>,
 				<NRF_PSEL(PWM_OUT2, 0, 3)>;
-			/* Idle high (LED off) from pinctrl on; without this the
-			 * pins idle low and the LED boots white until the first
-			 * render. Pairs with PWM_POLARITY_INVERTED in pwms. */
+			/* Idle high while PWM is stopped (active-low LED). */
 			nordic,invert;
 		};
 	};
