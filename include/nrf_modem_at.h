@@ -56,8 +56,13 @@ int nrf_modem_at_notif_handler_set(nrf_modem_at_notif_handler_t callback);
 /**
  * @brief AT link-dark event handler prototype.
  *
- * @param consecutive_timeouts Consecutive AT command timeouts that triggered
- * the event (>= CONFIG_NRFMODULE_AT_TIMEOUT_RECOVERY_THRESHOLD).
+ * Fires only after CONFIG_NRFMODULE_AT_TIMEOUT_RECOVERY_THRESHOLD consecutive
+ * SILENT timeouts. A timeout after which the modem was still sending bytes
+ * counts as a busy link, not a timeout: it holds the count where it is and
+ * never fires. Firing therefore means the link is dead, not busy.
+ *
+ * @param consecutive_timeouts Consecutive silent AT command timeouts that
+ * triggered the event (>= CONFIG_NRFMODULE_AT_TIMEOUT_RECOVERY_THRESHOLD).
  *
  * @note Called from the failing AT caller's thread (often a workqueue) with
  * the AT lock held: do not block, and do not wait on another thread that
@@ -72,9 +77,10 @@ typedef void (*nrf_modem_at_link_dark_handler_t)(int32_t consecutive_timeouts);
 /**
  * @brief Register a handler for the AT link-dark event.
  *
- * Fires after CONFIG_NRFMODULE_AT_TIMEOUT_RECOVERY_THRESHOLD consecutive AT
- * command timeouts, at most once per
- * CONFIG_NRFMODULE_AT_TIMEOUT_RECOVERY_SPACING_S seconds. The library takes
+ * Fires after CONFIG_NRFMODULE_AT_TIMEOUT_RECOVERY_THRESHOLD consecutive
+ * silent AT command timeouts, at most once per
+ * CONFIG_NRFMODULE_AT_TIMEOUT_RECOVERY_SPACING_S seconds. A link that is
+ * merely slow never fires it (see the handler prototype). The library takes
  * no recovery action itself unless CONFIG_NRFMODULE_AT_TIMEOUT_AUTO_RESET is
  * enabled -- recovery policy is the product's.
  *
