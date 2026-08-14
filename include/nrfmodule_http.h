@@ -157,6 +157,7 @@ int nrfmodule_http_init(void);
  *         -ECONNREFUSED: Connection refused
  *         -ENOTCONN: Not connected
  *         -ENOMEM: Out of memory
+ *         -EIO: The modem reported an AT error
  */
 int nrfmodule_http_request(const struct nrfmodule_http_request *req,
 			   struct nrfmodule_http_response *rsp,
