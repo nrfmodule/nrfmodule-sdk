@@ -323,6 +323,10 @@ int nrf_modem_at_sem_timeout_set(int timeout_ms);
  *	  @c nrf_modem_at_sem_timeout_set, so a caller that raises it for one
  *	  long-running command can restore the previous value afterwards.
  *
+ * @note This get/set pair is not atomic against a concurrent caller changing
+ *	 the timeout; a caller bracketing a command with a raised timeout
+ *	 should hold the AT lock across the whole bracket.
+ *
  * @return int The timeout in milliseconds, using the same encoding as
  *	       @c nrf_modem_at_sem_timeout_set (negative = wait indefinitely,
  *	       0 = trylock).
