@@ -22,7 +22,7 @@
  */
 
 /dts-v1/;
-#include <nordic/nrf9151ns_laca.dtsi>
+#include <arm/nordic/nrf9151_ns_laca.dtsi>
 #include "livetracker_nrf9151-pinctrl.dtsi"
 #include <zephyr/dt-bindings/gpio/gpio.h>
 
