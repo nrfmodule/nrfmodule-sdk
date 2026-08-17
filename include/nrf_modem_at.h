@@ -319,6 +319,17 @@ int nrf_modem_at_cmd_custom_set(struct nrf_modem_at_cmd_custom *custom_commands,
 int nrf_modem_at_sem_timeout_set(int timeout_ms);
 
 /**
+ * @brief Return the AT command timeout most recently set by
+ *	  @c nrf_modem_at_sem_timeout_set, so a caller that raises it for one
+ *	  long-running command can restore the previous value afterwards.
+ *
+ * @return int The timeout in milliseconds, using the same encoding as
+ *	       @c nrf_modem_at_sem_timeout_set (negative = wait indefinitely,
+ *	       0 = trylock).
+ */
+int nrf_modem_at_sem_timeout_get(void);
+
+/**
  * @brief Return the error type represented by the return value of
  *	  @c nrf_modem_at_printf and @c nrf_modem_at_cmd.
  *
