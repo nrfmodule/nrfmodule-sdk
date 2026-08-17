@@ -62,7 +62,15 @@ struct nrfmodule_mqtt_publish_param {
     uint8_t retain_flag;
 };
 
-/** @brief MQTT event structure. */
+/**
+ * @brief MQTT event structure.
+ *
+ * @note For NRFMODULE_MQTT_EVT_PUBLISH, the topic/payload pointers are only
+ * valid for the duration of the evt_cb call; copy out anything needed beyond it.
+ * @note A PUBLISH payload containing CR/LF or bytes matching a registered URC
+ * filter may be dropped at the URC-dispatch layer instead of delivered: a lost
+ * message is counted and logged, never delivered corrupted.
+ */
 struct nrfmodule_mqtt_evt {
     enum nrfmodule_mqtt_evt_type type;
     int result;
@@ -73,7 +81,21 @@ struct nrfmodule_mqtt_evt {
 
 struct nrfmodule_mqtt_client;
 
-/** @brief MQTT event callback. */
+/*
+ * AT-argument safety contract: caller-supplied strings embedded into AT
+ * command arguments — client_id, broker, user_name, password and all topic
+ * strings — must not contain a double quote ('"'), carriage return or line
+ * feed. The AT transport has no escape mechanism, so such a byte would break
+ * out of the quoted argument and could inject arbitrary AT commands. Entry
+ * points receiving a violating field return -EINVAL and send nothing.
+ */
+
+/**
+ * @brief MQTT event callback.
+ *
+ * @note Runs on the URC dispatch context (system workqueue). Must not block or
+ * issue AT commands (including via any nrfmodule_mqtt_* call).
+ */
 typedef void (*nrfmodule_mqtt_evt_cb_t)(struct nrfmodule_mqtt_client *client,
                                         const struct nrfmodule_mqtt_evt *evt);
 
@@ -110,6 +132,7 @@ struct nrfmodule_mqtt_subscription_list {
  *
  * @param client Client structure.
  * @return 0 on success, negative errno on failure.
+ * @retval -EINVAL @c client_id contains '"', CR or LF.
  */
 int nrfmodule_mqtt_init(struct nrfmodule_mqtt_client *client);
 
@@ -118,6 +141,7 @@ int nrfmodule_mqtt_init(struct nrfmodule_mqtt_client *client);
  *
  * @param client Client structure.
  * @return 0 on success, negative errno on failure.
+ * @retval -EINVAL @c broker, @c user_name or @c password contains '"', CR or LF.
  */
 int nrfmodule_mqtt_connect(struct nrfmodule_mqtt_client *client);
 
@@ -135,6 +159,7 @@ int nrfmodule_mqtt_disconnect(struct nrfmodule_mqtt_client *client);
  * @param client Client structure.
  * @param param Publish parameters.
  * @return 0 on success, negative errno on failure.
+ * @retval -EINVAL the topic string contains '"', CR or LF.
  */
 int nrfmodule_mqtt_publish(struct nrfmodule_mqtt_client *client,
                            const struct nrfmodule_mqtt_publish_param *param);
@@ -145,6 +170,7 @@ int nrfmodule_mqtt_publish(struct nrfmodule_mqtt_client *client,
  * @param client Client structure.
  * @param param Subscription list.
  * @return 0 on success, negative errno on failure.
+ * @retval -EINVAL any topic in the list contains '"', CR or LF (nothing is sent).
  */
 int nrfmodule_mqtt_subscribe(struct nrfmodule_mqtt_client *client,
                              const struct nrfmodule_mqtt_subscription_list *param);
@@ -155,9 +181,21 @@ int nrfmodule_mqtt_subscribe(struct nrfmodule_mqtt_client *client,
  * @param client Client structure.
  * @param param Subscription list.
  * @return 0 on success, negative errno on failure.
+ * @retval -EINVAL any topic in the list contains '"', CR or LF (nothing is sent).
  */
 int nrfmodule_mqtt_unsubscribe(struct nrfmodule_mqtt_client *client,
                                const struct nrfmodule_mqtt_subscription_list *param);
+
+/**
+ * @brief Number of #XMQTTMSG frames dropped by the reassembly accumulator
+ * (malformed, out-of-limits, suspect/spliced framing, or timed out).
+ *
+ * @note Monotonically increasing; wraps at UINT32_MAX (informational counter,
+ * not an exact lifetime total once wrapped).
+ *
+ * @return Total number of PUBLISH frames dropped so far.
+ */
+uint32_t nrfmodule_mqtt_msg_dropped_count(void);
 
 #ifdef __cplusplus
 }

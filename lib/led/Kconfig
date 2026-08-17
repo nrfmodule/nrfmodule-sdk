@@ -1,0 +1,22 @@
+# Copyright (c) 2026 nRFModule
+# SPDX-License-Identifier: Apache-2.0
+
+config NRFMODULE_RGB_LED
+	bool "nRFModule RGB status-LED engine"
+	select LED
+	help
+	  Priority-arbitrated effect engine for a PWM RGB LED: a pure renderer
+	  (led_effect) + priority arbiter (led_arbiter) + the per-instance PWM
+	  seam (rgb_led). The product supplies a pwm-leds node and enables
+	  CONFIG_LED_PWM / CONFIG_PWM for the backend, then maps its own signals
+	  onto arbiter layers.
+
+# Sizes struct led_arbiter, so it must be one value across the whole build —
+# a header #define could differ per translation unit and corrupt the struct.
+config NRFMODULE_LED_ARBITER_MAX_LAYERS
+	int "Max LED arbiter priority layers"
+	default 8
+	help
+	  Number of priority layers a led_arbiter holds (0 = lowest, higher
+	  wins). Each slot is small; raise only if a product maps more than 8
+	  distinct signals onto one LED.

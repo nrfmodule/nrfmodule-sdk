@@ -16,19 +16,20 @@
 
 #include <stddef.h>
 #include <stdbool.h>
+#include <stdint.h>
 
 #ifdef __cplusplus
 extern "C" {
 #endif
 
-#define CONFIG_SLM_AT_CMD_MAX_LEN 2024
+#define CONFIG_SLM_AT_CMD_MAX_LEN (2024)
 
 /** @brief Modem response type for 'ERROR' responses. */
-#define NRF_MODEM_AT_ERROR 1
+#define NRF_MODEM_AT_ERROR (1)
 /** @brief Modem response type for '+CME ERROR' responses. */
-#define NRF_MODEM_AT_CME_ERROR 2
+#define NRF_MODEM_AT_CME_ERROR (2)
 /** @brief Modem response type for '+CMS ERROR' responses. */
-#define NRF_MODEM_AT_CMS_ERROR 3
+#define NRF_MODEM_AT_CMS_ERROR (3)
 
 /**
  * @brief AT Notification handler prototype.
@@ -51,6 +52,47 @@ typedef void (*nrf_modem_at_notif_handler_t)(const char *notif);
  * @retval 0 On success.
  */
 int nrf_modem_at_notif_handler_set(nrf_modem_at_notif_handler_t callback);
+
+/**
+ * @brief AT link-dark event handler prototype.
+ *
+ * Fires only after CONFIG_NRFMODULE_AT_TIMEOUT_RECOVERY_THRESHOLD consecutive
+ * SILENT timeouts. A timeout after which the modem was still sending bytes
+ * counts as a busy link, not a timeout: it holds the count where it is and
+ * never fires. Firing therefore means the link is dead, not busy.
+ *
+ * @param consecutive_timeouts Consecutive silent AT command timeouts that
+ * triggered the event (>= CONFIG_NRFMODULE_AT_TIMEOUT_RECOVERY_THRESHOLD).
+ *
+ * @note Called from the failing AT caller's thread (often a workqueue) with
+ * the AT lock held: do not block, and do not wait on another thread that
+ * itself takes the AT lock. Calling @c nrf_modem_lib_reset() inline is
+ * permitted (the lock is owner-recursive; the reset suppresses the wake
+ * ladder and further counting for its duration), but it can block the
+ * caller for ~55 s worst case -- prefer deferring recovery to your own
+ * thread.
+ */
+typedef void (*nrf_modem_at_link_dark_handler_t)(int32_t consecutive_timeouts);
+
+/**
+ * @brief Register a handler for the AT link-dark event.
+ *
+ * Fires after CONFIG_NRFMODULE_AT_TIMEOUT_RECOVERY_THRESHOLD consecutive
+ * silent AT command timeouts, at most once per
+ * CONFIG_NRFMODULE_AT_TIMEOUT_RECOVERY_SPACING_S seconds. A link that is
+ * merely slow never fires it (see the handler prototype). The library takes
+ * no recovery action itself unless CONFIG_NRFMODULE_AT_TIMEOUT_AUTO_RESET is
+ * enabled -- recovery policy is the product's.
+ *
+ * Replaces any previously registered handler. Safe to call at any time, but
+ * an invocation already in progress on another thread may still be observed
+ * running briefly after this returns.
+ *
+ * @param handler The link-dark event handler. Use @c NULL to unset.
+ *
+ * @retval 0 On success.
+ */
+int nrf_modem_at_link_dark_handler_set(nrf_modem_at_link_dark_handler_t handler);
 
 /**
  * @brief Send a formatted AT command to the modem.
@@ -182,6 +224,32 @@ int nrf_modem_at_cmd_async(nrf_modem_at_resp_handler_t callback, const char *fmt
 
 int nrf_modem_at_datamode_send(const void *data, size_t len);
 
+/**
+ * @brief Send an AT command that opens datamode and its payload as one
+ * atomic, locked transaction.
+ *
+ * Command, payload and the datamode escape sequence ("+++") all run under
+ * the single AT lock: no other AT caller and no auto-sleep can interleave
+ * into the datamode window between the command and its payload. Prefer this
+ * over separate @c nrf_modem_at_printf() + @c nrf_modem_at_datamode_send()
+ * calls, which have an unlocked gap between them.
+ *
+ * On a command timeout, the escape sequence is still sent and stray bytes
+ * are drained before the lock is released, in case the modem already entered
+ * datamode before the timeout fired.
+ *
+ * @param cmd Pre-formatted AT command that opens datamode (no terminator).
+ * @param data Payload to send once datamode is open.
+ * @param len Length of @p data.
+ *
+ * @retval 0 On success.
+ * @retval -EINVAL @p cmd or @p data is NULL, or @p len is zero.
+ * @retval -EAGAIN The AT lock could not be acquired.
+ * @returns Other negative errno or positive AT error code from @p cmd or the
+ * payload/escape send, per @ref nrf_modem_at_cmd.
+ */
+int nrf_modem_at_cmd_datamode(const char *cmd, const void *data, size_t len);
+
 /** @brief AT command handler prototype.
  *
  * Implements a custom AT command in the application.
@@ -240,14 +308,30 @@ int nrf_modem_at_cmd_custom_set(struct nrf_modem_at_cmd_custom *custom_commands,
  * This function configures how long @c nrf_modem_at_printf, @c nrf_modem_at_scanf and
  * @c nrf_modem_at_cmd shall wait for ongoing AT commands to complete.
  *
- * By default, the timeout is infinite.
+ * By default, the timeout is 10 seconds.
  *
- * @param timeout_ms Timeout in milliseconds. Use NRF_MODEM_OS_FOREVER for infinite timeout
- *		     or NRF_MODEM_OS_NO_WAIT for no timeout.
+ * @param timeout_ms Timeout in milliseconds. A negative value waits indefinitely
+ *		     for the modem response (lock acquisition stays bounded);
+ *		     0 makes lock acquisition a trylock.
  *
  * @return int Zero on success, a negative errno otherwise.
  */
 int nrf_modem_at_sem_timeout_set(int timeout_ms);
+
+/**
+ * @brief Return the AT command timeout most recently set by
+ *	  @c nrf_modem_at_sem_timeout_set, so a caller that raises it for one
+ *	  long-running command can restore the previous value afterwards.
+ *
+ * @note This get/set pair is not atomic against a concurrent caller changing
+ *	 the timeout; a caller bracketing a command with a raised timeout
+ *	 should hold the AT lock across the whole bracket.
+ *
+ * @return int The timeout in milliseconds, using the same encoding as
+ *	       @c nrf_modem_at_sem_timeout_set (negative = wait indefinitely,
+ *	       0 = trylock).
+ */
+int nrf_modem_at_sem_timeout_get(void);
 
 /**
  * @brief Return the error type represented by the return value of
