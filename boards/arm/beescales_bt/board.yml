@@ -1,5 +1,6 @@
 board:
   name: beescales_bt
+  full_name: BeeScales BT
   vendor: nrfmodule
   socs:
     - name: nrf52840

@@ -1,5 +1,6 @@
 board:
   name: pigeontracker
+  full_name: PigeonTracker
   vendor: nrfmodule
   socs:
     - name: nrf52840

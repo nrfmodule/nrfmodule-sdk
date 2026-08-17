@@ -1,5 +1,6 @@
 board:
   name: livetracker
+  full_name: LiveTracker
   vendor: nrfmodule
   socs:
     - name: nrf52840
