@@ -1,7 +1,7 @@
 # Host-side (nRF52) module only. On nRF91 targets the include/ shim headers
 # (nrf_modem.h, nrf_modem_at.h, ...) would shadow the real modem library
 # headers, so the module opts out entirely (sdk#34 follow-up).
-if(CONFIG_SOC_SERIES_NRF91X)
+if(CONFIG_SOC_SERIES_NRF91)
     return()
 endif()
 
