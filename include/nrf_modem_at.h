@@ -56,8 +56,13 @@ int nrf_modem_at_notif_handler_set(nrf_modem_at_notif_handler_t callback);
 /**
  * @brief AT link-dark event handler prototype.
  *
- * @param consecutive_timeouts Consecutive AT command timeouts that triggered
- * the event (>= CONFIG_NRFMODULE_AT_TIMEOUT_RECOVERY_THRESHOLD).
+ * Fires only after CONFIG_NRFMODULE_AT_TIMEOUT_RECOVERY_THRESHOLD consecutive
+ * SILENT timeouts. A timeout after which the modem was still sending bytes
+ * counts as a busy link, not a timeout: it holds the count where it is and
+ * never fires. Firing therefore means the link is dead, not busy.
+ *
+ * @param consecutive_timeouts Consecutive silent AT command timeouts that
+ * triggered the event (>= CONFIG_NRFMODULE_AT_TIMEOUT_RECOVERY_THRESHOLD).
  *
  * @note Called from the failing AT caller's thread (often a workqueue) with
  * the AT lock held: do not block, and do not wait on another thread that
@@ -72,9 +77,10 @@ typedef void (*nrf_modem_at_link_dark_handler_t)(int32_t consecutive_timeouts);
 /**
  * @brief Register a handler for the AT link-dark event.
  *
- * Fires after CONFIG_NRFMODULE_AT_TIMEOUT_RECOVERY_THRESHOLD consecutive AT
- * command timeouts, at most once per
- * CONFIG_NRFMODULE_AT_TIMEOUT_RECOVERY_SPACING_S seconds. The library takes
+ * Fires after CONFIG_NRFMODULE_AT_TIMEOUT_RECOVERY_THRESHOLD consecutive
+ * silent AT command timeouts, at most once per
+ * CONFIG_NRFMODULE_AT_TIMEOUT_RECOVERY_SPACING_S seconds. A link that is
+ * merely slow never fires it (see the handler prototype). The library takes
  * no recovery action itself unless CONFIG_NRFMODULE_AT_TIMEOUT_AUTO_RESET is
  * enabled -- recovery policy is the product's.
  *
@@ -311,6 +317,21 @@ int nrf_modem_at_cmd_custom_set(struct nrf_modem_at_cmd_custom *custom_commands,
  * @return int Zero on success, a negative errno otherwise.
  */
 int nrf_modem_at_sem_timeout_set(int timeout_ms);
+
+/**
+ * @brief Return the AT command timeout most recently set by
+ *	  @c nrf_modem_at_sem_timeout_set, so a caller that raises it for one
+ *	  long-running command can restore the previous value afterwards.
+ *
+ * @note This get/set pair is not atomic against a concurrent caller changing
+ *	 the timeout; a caller bracketing a command with a raised timeout
+ *	 should hold the AT lock across the whole bracket.
+ *
+ * @return int The timeout in milliseconds, using the same encoding as
+ *	       @c nrf_modem_at_sem_timeout_set (negative = wait indefinitely,
+ *	       0 = trylock).
+ */
+int nrf_modem_at_sem_timeout_get(void);
 
 /**
  * @brief Return the error type represented by the return value of
