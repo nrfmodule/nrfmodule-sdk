@@ -4,6 +4,10 @@
 # SPDX-License-Identifier: LicenseRef-Nordic-5-Clause
 #
 
+# Host-side (nRF52) module only; nrf91 targets run the real modem library and
+# the module CMake opts out there, so the options must not exist either.
+if !SOC_SERIES_NRF91
+
 # Source config from nrfmodule-core (optional — not present in binary-only or non-modem builds)
 orsource "../../nrfmodule-core/src/client/Kconfig"
 orsource "../../nrfmodule-core/src/lib/ble_log/Kconfig"
@@ -16,4 +20,6 @@ orsource "../../nrfmodule-core/src/drivers/gnss/Kconfig.nrf91_slm"
 rsource "../lib/led/Kconfig"
 rsource "../lib/power/Kconfig"
 rsource "../drivers/sensor/bmp390/Kconfig"
+
+endif # !SOC_SERIES_NRF91
 
