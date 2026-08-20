@@ -23,6 +23,19 @@
 #include <stdbool.h>
 
 /**
+ * @brief SYS_INIT priority (APPLICATION level) of the board layer's USB power
+ *        init, which enables USBD and registers the VBUS callback.
+ *
+ * An app module whose USBD context must exist before that init runs uses a
+ * lower priority and BUILD_ASSERTs its ordering against this symbol, so a
+ * renumber here breaks that build instead of USB dying silently.
+ * Bare integer: SYS_INIT stringifies the priority into the linker section
+ * name (STRINGIFY, so this indirection still expands); brackets would emit
+ * a "P_(90)_" section and trip the linker's initlevel_error assert.
+ */
+#define NRFMODULE_BOARD_USB_INIT_PRIORITY 90 /* style:no-paren, SYS_INIT stringifies the priority */
+
+/**
  * @brief Debounced VBUS edge callback.
  *
  * Context: the board VBUS work item, which runs on the system workqueue.
