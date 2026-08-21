@@ -16,6 +16,7 @@
 #include <zephyr/usb/usbd_msg.h>
 #include <zephyr/logging/log.h>
 #include <hal/nrf_power.h>
+#include <nrfmodule_usb_vbus.h>
 
 LOG_MODULE_REGISTER(board);
 
@@ -64,7 +65,9 @@ static void shell_log_backend_set_active(bool active)
 }
 #endif /* defined(CONFIG_SHELL_LOG_BACKEND) */
 
-#define BOARD_USB_INIT_PRIORITY 90 /* style:no-paren — SYS_INIT pastes the priority, brackets break the build */
+/* Shared with apps via nrfmodule_usb_vbus.h so they can BUILD_ASSERT their
+ * ordering against the board's USB init. */
+#define BOARD_USB_INIT_PRIORITY NRFMODULE_BOARD_USB_INIT_PRIORITY
 
 static struct usbd_context *usb_ctx;
 static struct k_work usb_enable_work;

@@ -79,11 +79,10 @@ static void shell_log_backend_set_active(bool active)
 }
 #endif /* defined(CONFIG_SHELL_LOG_BACKEND) */
 
-/* SYS_INIT priority must be a bare integer (token-pasted into linker section name).
- * Must run after cdc_acm_serial SYS_INIT which uses APPLICATION priority 90.
- * Same priority is safe - board library links after USB subsystem.
- */
-#define BOARD_USB_INIT_PRIORITY 90 /* style:no-paren — SYS_INIT pastes the priority, brackets break the build */
+/* Shared with apps via nrfmodule_usb_vbus.h so they can BUILD_ASSERT their
+ * ordering. Must run after cdc_acm_serial SYS_INIT which uses APPLICATION
+ * priority 90; same priority is safe - board library links after USB. */
+#define BOARD_USB_INIT_PRIORITY NRFMODULE_BOARD_USB_INIT_PRIORITY
 
 /* Delay before the one confirming resample that follows any VBUS activity. */
 #define VBUS_CONFIRM_RESAMPLE_MS (NRFMODULE_VBUS_DEBOUNCE_STABLE_MS)
