@@ -62,17 +62,22 @@ int sm_modem_power_mgmt_ensure_awake(void);
 void sm_modem_power_mgmt_notify_activity(void);
 
 /**
- * @brief Pause automatic sleep (e.g. during LTE registration).
+ * @brief Pause automatic sleep (e.g. during LTE registration or a GNSS
+ * session).
  *
- * Cancels any pending inactivity timer. Auto-sleep remains paused
- * until sm_modem_power_mgmt_resume() is called.
+ * Cancels any pending inactivity timer. Calls nest: each pause() needs a
+ * matching resume(), and auto-sleep stays paused as long as any caller
+ * still holds one. Safe for multiple independent owners (e.g. LTE
+ * registration and a GNSS driver) to pause concurrently.
  */
 void sm_modem_power_mgmt_pause(void);
 
 /**
  * @brief Resume automatic sleep after a previous pause.
  *
- * Restarts the inactivity timer from now.
+ * Releases this caller's pause. Auto-sleep only resumes, restarting the
+ * inactivity timer from now, once every pause() has a matching resume().
+ * A resume() with no outstanding pause is ignored.
  */
 void sm_modem_power_mgmt_resume(void);
 
